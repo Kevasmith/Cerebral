@@ -97,29 +97,34 @@
 
 ---
 
-## Phase 5 — Onboarding + Polish (Week 8)
+## Phase 5 — Frontend Build (Week 8)
 
-### Onboarding Flow
-- [ ] Connect bank step (Flinks/Plaid widget)
-- [ ] Select interests (investing, side income, networking, saving)
-- [ ] Location permission
-- [ ] Goal selection: "save more" / "make more" / "learn investing"
-- [ ] Store preferences to `Preferences` table
+### Setup
+- [x] Expo app scaffold (existing, Expo 48 + React Navigation 6)
+- [x] All missing deps added to package.json (bottom-tabs, zustand, async-storage, react-native-screens)
+- [x] API base URL fixed to `/api/v1`
+- [x] Zustand auth store (init, signIn, signUp, signOut, fetchProfile, savePreferences)
 
-### Profile / Settings Screen
-- [ ] Connected accounts list
-- [ ] Edit interests
-- [ ] Edit goals
-- [ ] Notification preferences
+### Navigation
+- [x] Auth flow: SignIn → Onboarding → Main tabs (state-driven, no manual routing)
+- [x] Bottom tab navigator: Home, Explore, Spend, Ask AI, Profile
 
-### Polish + Launch Prep
-- [ ] Error states for all screens
-- [ ] Loading skeletons
-- [ ] Empty states (no transactions, no insights yet)
-- [ ] Push notifications (insight alerts, opportunity alerts)
-- [ ] Beta testing with 5–10 users in Edmonton
-- [ ] Fix bugs from beta feedback
-- [ ] App Store / TestFlight or Google Play internal testing setup
+### Screens
+- [x] SignIn — combined sign in / sign up, Firebase auth, styled
+- [x] Onboarding — goal selection (step 1) + interests multi-select (step 2)
+- [x] Dashboard — snapshot card + AI insight cards with unread dot + mark-read
+- [x] Transactions — existing (category filter, pagination, pull-to-refresh)
+- [x] Opportunities — personalized feed, type badges, action buttons
+- [x] Chat — existing (chat bubbles, send, loading state)
+- [x] Profile — avatar, goal/interests display, sign out
+
+### Remaining (polish pass)
+- [ ] Connect bank step (Flinks WebView widget) — next sprint
+- [ ] Push notifications
+- [ ] Beta testing with Edmonton users
+- [ ] App Store / TestFlight setup
+
+> **To run:** `cd frontend && npm install --legacy-peer-deps && npx expo start`
 
 ---
 

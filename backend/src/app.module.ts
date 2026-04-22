@@ -23,6 +23,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
 import { InsightsModule } from './modules/insights/insights.module';
 import { OpportunitiesModule } from './modules/opportunities/opportunities.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -32,38 +33,58 @@ import { ChatModule } from './modules/chat/chat.module';
     }),
 
     // Global rate limiting: 120 req / 60 s per IP by default
-    ThrottlerModule.forRoot([{
-      name: 'global',
-      ttl: 60_000,
+    ThrottlerModule.forRoot({
+      ttl: 60,
       limit: 120,
-    }]),
+    }),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('database.host'),
-        port: config.get<number>('database.port'),
-        username: config.get('database.username'),
-        password: config.get('database.password'),
-        database: config.get('database.database'),
-        entities: [User, Account, Transaction, Insight, Opportunity, Preference],
-        synchronize: process.env.NODE_ENV !== 'production',
-        logging: process.env.NODE_ENV === 'development',
-      }),
+      useFactory: (config: ConfigService) => {
+        const db = config.get('database') as any;
+        const entities = [User, Account, Transaction, Insight, Opportunity, Preference];
+
+        // Allow explicit override: TYPEORM_SYNCHRONIZE=true/false
+        const syncEnv = process.env.TYPEORM_SYNCHRONIZE;
+        const synchronize = typeof syncEnv !== 'undefined' ? syncEnv === 'true' : (process.env.NODE_ENV !== 'production');
+
+        const base: any = {
+          type: 'postgres',
+          entities,
+          synchronize,
+          logging: process.env.NODE_ENV === 'development',
+        };
+
+        // Prefer full DATABASE_URL when provided (Railway)
+        if (db?.url || process.env.DATABASE_URL) {
+          base.url = db?.url || process.env.DATABASE_URL;
+          // Optionally enable SSL if requested (set DATABASE_SSL=true)
+          if (process.env.DATABASE_SSL === 'true') {
+            base.extra = { ssl: { rejectUnauthorized: false } };
+          }
+        } else {
+          base.host = db?.host || config.get('database.host');
+          base.port = db?.port || config.get<number>('database.port');
+          base.username = db?.username || config.get('database.username');
+          base.password = db?.password || config.get('database.password');
+          base.database = db?.database || config.get('database.database');
+        }
+
+        return base;
+      },
     }),
 
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        stores: [
-          createKeyv(
-            `redis://${config.get('redis.host')}:${config.get('redis.port')}`,
-          ),
-        ],
-        ttl: config.get<number>('redis.ttl'),
-      }),
+      useFactory: (config: ConfigService) => {
+        const r = config.get('redis') as any;
+        const redisUrl = r?.url || process.env.REDIS_URL || `redis://${config.get('redis.host')}:${config.get('redis.port')}`;
+        return {
+          stores: [createKeyv(redisUrl)],
+          ttl: config.get<number>('redis.ttl'),
+        };
+      },
     }),
 
     UsersModule,
@@ -72,6 +93,7 @@ import { ChatModule } from './modules/chat/chat.module';
     InsightsModule,
     OpportunitiesModule,
     ChatModule,
+    HealthModule,
   ],
   providers: [
     // Apply ThrottlerGuard globally; individual endpoints can override with @Throttle()
@@ -81,13 +103,48 @@ import { ChatModule } from './modules/chat/chat.module';
 export class AppModule {
   constructor() {
     if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        }),
-      });
+      // Prefer full JSON service account in FIREBASE_SERVICE_ACCOUNT (stringified JSON)
+      const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+      const projectId = process.env.FIREBASE_PROJECT_ID;
+      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+      const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
+
+      try {
+        if (serviceAccountJson) {
+          const parsed = JSON.parse(serviceAccountJson);
+          if (parsed && parsed.project_id) {
+            admin.initializeApp({
+              credential: admin.credential.cert(parsed),
+            });
+            return;
+          }
+        }
+
+        // Fallback to individual env vars if provided
+        if (projectId && clientEmail && privateKeyRaw) {
+          const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+          admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId,
+              clientEmail,
+              privateKey,
+            }),
+          });
+          return;
+        }
+
+        // If we reach here, Firebase credentials are not configured; skip init to avoid crash.
+        // The app will continue to run without admin SDK features (auth guards relying on Firebase client still work for token verification elsewhere).
+        // Log a clear warning so deploys can detect missing config.
+        // eslint-disable-next-line no-console
+        console.warn(
+          'Firebase admin SDK not initialized: missing FIREBASE_SERVICE_ACCOUNT or FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY env vars',
+        );
+      } catch (err) {
+        // If parsing or initialization fails, log and continue to avoid crashing the whole app.
+        // eslint-disable-next-line no-console
+        console.error('Failed to initialize Firebase admin SDK:', err?.message || err);
+      }
     }
   }
 }
