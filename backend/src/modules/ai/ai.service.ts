@@ -54,7 +54,7 @@ User's goal: ${ctx.userGoal}. Interests: ${ctx.userInterests.join(', ')}.`,
   }
 
   async generateChatResponse(
-    userMessage: string,
+    rawMessage: string,
     context: {
       totalCash: number;
       monthlySpending: number;
@@ -62,6 +62,7 @@ User's goal: ${ctx.userGoal}. Interests: ${ctx.userInterests.join(', ')}.`,
       userGoal: UserGoal;
     },
   ): Promise<string> {
+    const userMessage = this.sanitizeUserMessage(rawMessage);
     try {
       const response = await this.client.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -96,6 +97,38 @@ Keep answers under 80 words. Be conversational and specific.`,
     };
 
     return prompts[ctx.type] ?? `Generate a financial insight for this data: ${JSON.stringify(ctx.data)}`;
+  }
+
+  // Strip prompt injection attempts before passing user text to the LLM.
+  // Removes role-override phrases, control characters, and repeated whitespace.
+  private sanitizeUserMessage(message: string): string {
+    const INJECTION_PATTERNS = [
+      /ignore\s+(all\s+)?(previous|above|prior)\s+instructions?/gi,
+      /forget\s+(everything|your\s+instructions?|what\s+you('ve|\s+have)\s+been\s+told)/gi,
+      /you\s+are\s+now\s+/gi,
+      /act\s+as\s+(a\s+|an\s+)?(?!financial|advisor|assistant)/gi,
+      /\bsystem\s*:/gi,
+      /\bassistant\s*:/gi,
+      /\bhuman\s*:/gi,
+      /\buser\s*:/gi,
+      /\[INST\]/gi,
+      /<\|im_start\|>/gi,
+      /<\|im_end\|>/gi,
+    ];
+
+    let sanitized = message
+      // Strip null bytes and non-printable control characters (keep \n \t)
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      // Collapse excessive whitespace
+      .replace(/\s{3,}/g, '  ')
+      .trim();
+
+    for (const pattern of INJECTION_PATTERNS) {
+      sanitized = sanitized.replace(pattern, '[removed]');
+    }
+
+    // Hard cap at 500 chars (DTO already enforces this, but belt-and-suspenders)
+    return sanitized.slice(0, 500);
   }
 
   private fallbackInsight(ctx: InsightContext): { title: string; body: string } {

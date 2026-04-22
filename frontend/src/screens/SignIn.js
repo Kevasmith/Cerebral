@@ -25,8 +25,30 @@ export default function SignIn() {
 
   const { signIn, signUp } = useAuthStore();
 
+  const validate = () => {
+    if (!email.trim()) return 'Email is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Enter a valid email address.';
+    if (!password) return 'Password is required.';
+    if (mode === 'signup') {
+      if (!name.trim()) return 'Name is required.';
+      if (password.length < 8) return 'Password must be at least 8 characters.';
+    }
+    return null;
+  };
+
+  const FIREBASE_ERRORS = {
+    'auth/user-not-found': 'No account found with that email.',
+    'auth/wrong-password': 'Incorrect password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/email-already-in-use': 'An account with that email already exists.',
+    'auth/too-many-requests': 'Too many attempts. Try again later.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/weak-password': 'Password must be at least 8 characters.',
+  };
+
   const submit = async () => {
-    if (!email || !password) { setError('Email and password required'); return; }
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
     setError('');
     setLoading(true);
     try {
@@ -34,11 +56,11 @@ export default function SignIn() {
       if (mode === 'signin') {
         await signIn(email.trim(), password);
       } else {
-        if (!name.trim()) { setError('Name required'); setLoading(false); return; }
         await signUp(email.trim(), password, name.trim());
       }
     } catch (e) {
-      setError(e.message || 'Something went wrong');
+      const code = e.code ?? '';
+      setError(FIREBASE_ERRORS[code] || e.message || 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
@@ -54,7 +76,10 @@ export default function SignIn() {
           <TextInput style={styles.input} placeholder="Your name" value={name} onChangeText={setName} autoCapitalize="words" />
         )}
         <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+        <TextInput style={styles.input} placeholder="Password (min 8 characters)" value={password} onChangeText={setPassword} secureTextEntry />
+        {mode === 'signup' && password.length > 0 && password.length < 8 && (
+          <Text style={styles.hint}>Password must be at least 8 characters</Text>
+        )}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -85,4 +110,5 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   toggle: { color: '#007bff', textAlign: 'center', marginTop: 20, fontSize: 14 },
   error: { color: '#c0392b', marginBottom: 8, fontSize: 13 },
+  hint: { color: '#e67e22', fontSize: 12, marginTop: -8, marginBottom: 8 },
 });

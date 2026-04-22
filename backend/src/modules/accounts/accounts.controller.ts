@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { IsString } from 'class-validator';
+import { Throttle } from '@nestjs/throttler';
 import { AccountsService } from './accounts.service';
 import { UsersService } from '../users/users.service';
 import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
@@ -37,6 +38,8 @@ export class AccountsController {
     return { url: this.accountsService.getConnectUrl(FLINKS_REDIRECT_URL) };
   }
 
+  // 5 bank syncs per minute per IP — Flinks is slow and expensive
+  @Throttle({ global: { limit: 5, ttl: 60_000 } })
   @Post('sync')
   async syncBank(
     @CurrentUser() user: { uid: string },

@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { createKeyv } from '@keyv/redis';
 import * as admin from 'firebase-admin';
 
@@ -28,6 +30,13 @@ import { ChatModule } from './modules/chat/chat.module';
       isGlobal: true,
       load: [databaseConfig, redisConfig],
     }),
+
+    // Global rate limiting: 120 req / 60 s per IP by default
+    ThrottlerModule.forRoot([{
+      name: 'global',
+      ttl: 60_000,
+      limit: 120,
+    }]),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -63,6 +72,10 @@ import { ChatModule } from './modules/chat/chat.module';
     InsightsModule,
     OpportunitiesModule,
     ChatModule,
+  ],
+  providers: [
+    // Apply ThrottlerGuard globally; individual endpoints can override with @Throttle()
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {

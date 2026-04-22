@@ -5,19 +5,25 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+  const isProd = process.env.NODE_ENV === 'production';
 
   app.setGlobalPrefix('api/v1');
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,       // strip unknown properties
+      whitelist: true,
       forbidNonWhitelisted: false,
-      transform: true,       // auto-convert primitives (strings → numbers etc)
+      transform: true,
     }),
   );
 
+  const corsOrigin = process.env.CORS_ORIGIN;
+  if (isProd && !corsOrigin) {
+    logger.warn('CORS_ORIGIN is not set in production — defaulting to * which allows all origins. Set CORS_ORIGIN to your frontend URL.');
+  }
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? '*',
+    origin: corsOrigin ?? (isProd ? false : '*'),
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
     allowedHeaders: ['Authorization', 'Content-Type'],
   });
