@@ -19,6 +19,55 @@ export const api = axios.create({
 });
 
 let auth;
+let refreshTimer = null;
+
+function parseJwt(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+function scheduleTokenRefreshForToken(token) {
+  // Clear previous timer
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+
+  const payload = parseJwt(token);
+  let refreshInMs = 45 * 60 * 1000; // default 45 minutes
+  if (payload && payload.exp) {
+    const expMs = payload.exp * 1000;
+    const now = Date.now();
+    // Refresh 2 minutes before expiry if possible
+    const msUntilExpiry = expMs - now;
+    refreshInMs = Math.max(2 * 60 * 1000, msUntilExpiry - 2 * 60 * 1000);
+  }
+
+  // Safety cap: at most 55 minutes
+  refreshInMs = Math.min(refreshInMs, 55 * 60 * 1000);
+
+  refreshTimer = setTimeout(async () => {
+    try {
+      const newToken = await refreshIdTokenSilently();
+      if (newToken) scheduleTokenRefreshForToken(newToken);
+    } catch (e) {
+      // ignore
+    }
+  }, refreshInMs);
+}
+
+function cancelScheduledRefresh() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+}
 
 /**
  * Initialize Firebase (call from App startup). Pass a firebaseConfig object
@@ -42,11 +91,14 @@ export function initFirebase(firebaseConfig) {
         } catch (e) {
           // ignore secure store errors
         }
+        // schedule proactive refresh
+        if (token) scheduleTokenRefreshForToken(token);
       } else {
         delete api.defaults.headers.common.Authorization;
         try {
           await SecureStore.deleteItemAsync('cerebral_id_token');
         } catch (e) {}
+        cancelScheduledRefresh();
       }
     });
 
@@ -77,6 +129,8 @@ export async function ensureAnonymousAuth() {
       try {
         await SecureStore.setItemAsync('cerebral_id_token', token);
       } catch (e) {}
+      // schedule proactive refresh
+      scheduleTokenRefreshForToken(token);
     }
   } else {
     const token = await auth.currentUser.getIdToken(true);
@@ -90,6 +144,7 @@ export async function signOut() {
   try {
     await SecureStore.deleteItemAsync('cerebral_id_token');
   } catch (e) {}
+  cancelScheduledRefresh();
 }
 
 /**
@@ -103,6 +158,8 @@ export async function signInWithEmail(email, password) {
   try {
     await SecureStore.setItemAsync('cerebral_id_token', token);
   } catch (e) {}
+  // schedule proactive refresh
+  scheduleTokenRefreshForToken(token);
   return cred;
 }
 
@@ -117,6 +174,8 @@ export async function signUpWithEmail(email, password) {
   try {
     await SecureStore.setItemAsync('cerebral_id_token', token);
   } catch (e) {}
+  // schedule proactive refresh
+  scheduleTokenRefreshForToken(token);
   return cred;
 }
 
@@ -141,7 +200,7 @@ function subscribeTokenRefresh(cb) {
   refreshSubscribers.push(cb);
 }
 
-function onRrefreshed(token) {
+function onRefreshed(token) {
   refreshSubscribers.forEach((cb) => cb(token));
   refreshSubscribers = [];
 }
@@ -183,7 +242,12 @@ api.interceptors.response.use(
     const status = error.response?.status;
     if (status !== 401) return Promise.reject(error);
 
-    if (originalRequest._retry) return Promise.reject(error);
+    if (originalRequest._retry) {
+      // Second 401 after refresh — clear credentials so auth state resets
+      delete api.defaults.headers.common.Authorization;
+      try { await SecureStore.deleteItemAsync('cerebral_id_token'); } catch (_) {}
+      return Promise.reject(error);
+    }
     originalRequest._retry = true;
 
     if (isRefreshing) {
@@ -200,13 +264,13 @@ api.interceptors.response.use(
     try {
       const newToken = await refreshIdTokenSilently();
       isRefreshing = false;
-      onRrefreshed(newToken);
+      onRefreshed(newToken);
       if (!newToken) return Promise.reject(error);
       originalRequest.headers.Authorization = `Bearer ${newToken}`;
       return api(originalRequest);
     } catch (e) {
       isRefreshing = false;
-      onRrefreshed(null);
+      onRefreshed(null);
       return Promise.reject(error);
     }
   },

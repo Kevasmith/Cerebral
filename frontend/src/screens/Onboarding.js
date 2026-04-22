@@ -58,8 +58,9 @@ function ConnectBankStep({ onConnected, onSkip }) {
     const loginId = urlObj.searchParams.get('loginId');
     if (!loginId) return;
 
-    setShowWebView(false);
+    // Set syncing BEFORE closing WebView so there's no blank-screen gap
     setSyncing(true);
+    setShowWebView(false);
     setError('');
     try {
       await api.post('/accounts/sync', { loginId });
@@ -218,7 +219,9 @@ function InterestsStep({ goal, onFinish }) {
     setError('');
     setLoading(true);
     try {
-      await savePreferences({ goal, interests, location: 'Edmonton, AB' });
+      const { profile } = useAuthStore.getState();
+      const location = profile?.location || 'Edmonton, AB';
+      await savePreferences({ goal, interests, location });
     } catch {
       setError('Could not save preferences. Try again.');
     } finally {

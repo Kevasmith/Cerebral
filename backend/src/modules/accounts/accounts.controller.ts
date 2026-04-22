@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { IsString } from 'class-validator';
 import { AccountsService } from './accounts.service';
+import { UsersService } from '../users/users.service';
 import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -14,16 +15,21 @@ const FLINKS_REDIRECT_URL = 'https://cerebral.app/bank-connected';
 @Controller('accounts')
 @UseGuards(FirebaseAuthGuard)
 export class AccountsController {
-  constructor(private readonly accountsService: AccountsService) {}
+  constructor(
+    private readonly accountsService: AccountsService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Get()
   async getUserAccounts(@CurrentUser() user: { uid: string }) {
-    return this.accountsService.findAllByUser(user.uid);
+    const profile = await this.usersService.findByFirebaseUid(user.uid);
+    return this.accountsService.findAllByUser(profile.id);
   }
 
   @Get('dashboard')
   async getDashboard(@CurrentUser() user: { uid: string }) {
-    return this.accountsService.getDashboardSnapshot(user.uid);
+    const profile = await this.usersService.findByFirebaseUid(user.uid);
+    return this.accountsService.getDashboardSnapshot(profile.id);
   }
 
   @Get('connect-url')
@@ -36,6 +42,7 @@ export class AccountsController {
     @CurrentUser() user: { uid: string },
     @Body() body: SyncBankDto,
   ) {
-    return this.accountsService.syncFromLoginId(user.uid, body.loginId);
+    const profile = await this.usersService.findByFirebaseUid(user.uid);
+    return this.accountsService.syncFromLoginId(profile.id, body.loginId);
   }
 }

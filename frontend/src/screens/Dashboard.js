@@ -69,19 +69,21 @@ export default function Dashboard() {
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const [snapRes, insightRes] = await Promise.all([
-        api.get('/accounts/dashboard'),
-        api.post('/insights/refresh'),
-      ]);
+      // Fetch snapshot and insights independently so one failure doesn't kill both
+      const snapRes = await api.get('/accounts/dashboard');
       setSnapshot(snapRes.data);
-      setInsights(insightRes.data ?? []);
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to load dashboard');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
+    try {
+      const insightRes = await api.post('/insights/refresh');
+      setInsights(insightRes.data ?? []);
+    } catch {
+      // Insights failing silently is acceptable — dashboard is still useful
+    }
+    setLoading(false);
+    setRefreshing(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);

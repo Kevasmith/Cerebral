@@ -5,9 +5,10 @@ import { AccountsService } from './accounts.service';
 import { Account } from '../../entities/account.entity';
 import { FlinksModule } from '../flinks/flinks.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Account]), FlinksModule, TransactionsModule],
+  imports: [TypeOrmModule.forFeature([Account]), FlinksModule, TransactionsModule, UsersModule],
   controllers: [AccountsController],
   providers: [AccountsService],
   exports: [AccountsService],
