@@ -14,15 +14,29 @@ interface InsightContext {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private readonly client: OpenAI;
+  private readonly client: OpenAI | null;
 
   constructor(private config: ConfigService) {
-    this.client = new OpenAI({
-      apiKey: config.get<string>('OPENAI_API_KEY'),
-    });
+    const apiKey = config.get<string>('OPENAI_API_KEY');
+    if (apiKey) {
+      try {
+        this.client = new OpenAI({ apiKey });
+      } catch (err) {
+        this.logger.error('Failed to initialize OpenAI client:', err);
+        this.client = null;
+      }
+    } else {
+      this.logger.warn('OpenAI API key not configured; AI features will use fallback responses');
+      this.client = null;
+    }
   }
 
   async generateInsightCard(ctx: InsightContext): Promise<{ title: string; body: string }> {
+    // If OpenAI client is not available, use fallback directly
+    if (!this.client) {
+      return this.fallbackInsight(ctx);
+    }
+
     const prompt = this.buildInsightPrompt(ctx);
 
     try {
@@ -62,6 +76,11 @@ User's goal: ${ctx.userGoal}. Interests: ${ctx.userInterests.join(', ')}.`,
       userGoal: UserGoal;
     },
   ): Promise<string> {
+    // If OpenAI client is not available, use fallback directly
+    if (!this.client) {
+      return "I'm temporarily unavailable, but I've recorded your question. Try again shortly.";
+    }
+
     const userMessage = this.sanitizeUserMessage(rawMessage);
     try {
       const response = await this.client.chat.completions.create({
