@@ -10,6 +10,7 @@ import { AiModule } from '../ai/ai.module';
 import { AccountsModule } from '../accounts/accounts.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { UsersModule } from '../users/users.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UsersModule } from '../users/users.module';
     AccountsModule,
     TransactionsModule,
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [InsightsController],
   providers: [InsightsService, InsightEngineService],

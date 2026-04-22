@@ -24,3 +24,6 @@ Thumbs.db
 
 # Expo
 .expo/
+
+# Google Play service account key (contains secrets)
+google-service-account.json

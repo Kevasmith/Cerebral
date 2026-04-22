@@ -8,6 +8,7 @@ import { TransactionsService } from '../transactions/transactions.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { AiService } from '../ai/ai.service';
 import { TransactionCategory } from '../../entities/transaction.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const IDLE_CASH_THRESHOLD = 1000;
 const OVERSPEND_PERCENT_THRESHOLD = 10;
@@ -34,6 +35,7 @@ export class InsightEngineService {
     private readonly transactionsService: TransactionsService,
     private readonly accountsService: AccountsService,
     private readonly ai: AiService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async runForUser(userId: string): Promise<Insight[]> {
@@ -72,6 +74,17 @@ export class InsightEngineService {
     }
 
     this.logger.log(`Generated ${newInsights.length} new insights for user ${userId}`);
+
+    if (newInsights.length > 0 && user.expoPushToken) {
+      const title = newInsights.length === 1
+        ? newInsights[0].title
+        : `${newInsights.length} new insights`;
+      const body = newInsights.length === 1
+        ? newInsights[0].body.slice(0, 100)
+        : 'Tap to see your latest financial insights.';
+      await this.notifications.send(user.expoPushToken, title, body);
+    }
+
     return newInsights;
   }
 

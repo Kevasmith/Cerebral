@@ -6,10 +6,16 @@ import {
   Body,
   UseGuards,
 } from '@nestjs/common';
+import { IsString } from 'class-validator';
 import { UsersService } from './users.service';
 import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RegisterDto, UpdatePreferencesDto } from './dto/onboarding.dto';
+
+class PushTokenDto {
+  @IsString()
+  expoPushToken: string;
+}
 
 @Controller('users')
 @UseGuards(FirebaseAuthGuard)
@@ -46,6 +52,15 @@ export class UsersController {
   async getPreferences(@CurrentUser() user: { uid: string }) {
     const profile = await this.usersService.findByFirebaseUid(user.uid);
     return this.usersService.getPreferences(profile.id);
+  }
+
+  @Patch('me/push-token')
+  async savePushToken(
+    @CurrentUser() user: { uid: string },
+    @Body() body: PushTokenDto,
+  ) {
+    await this.usersService.savePushToken(user.uid, body.expoPushToken);
+    return { ok: true };
   }
 
   // Onboarding step: save goals + interests + location

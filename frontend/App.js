@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 
-import { initFirebase } from './src/api/client';
+import { initFirebase, api } from './src/api/client';
 import useAuthStore from './src/store/authStore';
+import { registerForPushNotifications } from './src/utils/notifications';
 
 import SignIn from './src/screens/SignIn';
 import Onboarding from './src/screens/Onboarding';
@@ -61,13 +63,32 @@ function MainTabs() {
 
 export default function App() {
   const { user, isLoading, isOnboarded, init } = useAuthStore();
+  const notificationListener = useRef();
+  const responseListener = useRef();
 
   useEffect(() => {
     if (FIREBASE_CONFIG.apiKey) {
       initFirebase(FIREBASE_CONFIG);
     }
     init();
+
+    notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {});
+    return () => {
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    };
   }, []);
+
+  // Register push token once the user is authenticated
+  useEffect(() => {
+    if (!user) return;
+    registerForPushNotifications()
+      .then((token) => {
+        if (token) api.patch('/users/me/push-token', { expoPushToken: token }).catch(() => {});
+      })
+      .catch(() => {});
+  }, [user]);
 
   if (isLoading) {
     return (

@@ -80,4 +80,10 @@ export class UsersService {
     Object.assign(user, updates);
     return this.userRepo.save(user);
   }
+
+  async savePushToken(firebaseUid: string, expoPushToken: string): Promise<void> {
+    const user = await this.findByFirebaseUid(firebaseUid);
+    user.expoPushToken = expoPushToken;
+    await this.userRepo.save(user);
+  }
 }

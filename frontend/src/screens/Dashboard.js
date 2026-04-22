@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ActivityIndicator, StyleSheet,
+  View, Text, StyleSheet,
   ScrollView, RefreshControl, TouchableOpacity,
 } from 'react-native';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
+import Skeleton from '../components/Skeleton';
 
 const STATUS_CONFIG = {
   'on-track': { label: 'On Track', color: '#2ecc71', bg: '#eafaf1' },
@@ -92,7 +93,23 @@ export default function Dashboard() {
     } catch {}
   };
 
-  if (loading) return <ActivityIndicator style={styles.center} size="large" color="#1a1a2e" />;
+  if (loading) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View style={styles.header}>
+          <Skeleton height={28} width={180} borderRadius={6} style={{ marginBottom: 8 }} />
+          <Skeleton height={16} width={130} borderRadius={4} />
+        </View>
+        <Skeleton height={130} borderRadius={20} style={{ margin: 16, marginTop: 8 }} />
+        <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
+          <Skeleton height={20} width={110} borderRadius={4} style={{ marginBottom: 14 }} />
+          {[1, 2, 3].map((n) => (
+            <Skeleton key={n} height={88} borderRadius={16} style={{ marginBottom: 12 }} />
+          ))}
+        </View>
+      </ScrollView>
+    );
+  }
   if (error && !snapshot) {
     return (
       <View style={styles.center}>

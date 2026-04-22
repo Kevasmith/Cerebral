@@ -2,14 +2,38 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  ActivityIndicator,
   FlatList,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { api } from '../api/client';
+import Skeleton from '../components/Skeleton';
+
+function TransactionSkeleton() {
+  return (
+    <View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8, paddingVertical: 10, gap: 8 }} pointerEvents="none">
+        {[80, 55, 100, 70, 60].map((w, i) => (
+          <Skeleton key={i} width={w} height={34} borderRadius={20} />
+        ))}
+      </ScrollView>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <View key={i} style={skeletonRow}>
+          <View style={{ flex: 1 }}>
+            <Skeleton height={15} width="72%" borderRadius={4} style={{ marginBottom: 8 }} />
+            <Skeleton height={12} width="38%" borderRadius={4} />
+          </View>
+          <Skeleton height={15} width={56} borderRadius={4} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const skeletonRow = { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' };
 
 const CATEGORIES = [
   'all',
@@ -114,7 +138,7 @@ export default function Transactions() {
     fetchTransactions({ reset: true });
   };
 
-  if (loading && transactions.length === 0) return <ActivityIndicator style={styles.center} />;
+  if (loading && transactions.length === 0) return <View style={styles.container}><TransactionSkeleton /></View>;
   if (error && transactions.length === 0) return <View style={styles.center}><Text>{error}</Text></View>;
 
   return (

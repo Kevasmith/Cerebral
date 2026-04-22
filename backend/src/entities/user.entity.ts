@@ -28,6 +28,9 @@ export class User {
   @Column({ nullable: true })
   location: string;
 
+  @Column({ nullable: true })
+  expoPushToken: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
