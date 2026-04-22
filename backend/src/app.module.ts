@@ -36,7 +36,7 @@ import { HealthModule } from './modules/health/health.module';
     ThrottlerModule.forRoot({
       ttl: 60,
       limit: 120,
-    }),
+    } as any),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -103,47 +103,64 @@ import { HealthModule } from './modules/health/health.module';
 export class AppModule {
   constructor() {
     if (!admin.apps.length) {
-      // Prefer full JSON service account in FIREBASE_SERVICE_ACCOUNT (stringified JSON)
       const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-      const projectId = process.env.FIREBASE_PROJECT_ID;
-      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-      const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
+      const projectIdEnv = process.env.FIREBASE_PROJECT_ID;
+      const clientEmailEnv = process.env.FIREBASE_CLIENT_EMAIL;
+      const privateKeyRawEnv = process.env.FIREBASE_PRIVATE_KEY;
 
+      let sa: any = null;
       try {
         if (serviceAccountJson) {
-          const parsed = JSON.parse(serviceAccountJson);
-          if (parsed && parsed.project_id) {
-            admin.initializeApp({
-              credential: admin.credential.cert(parsed),
-            });
-            return;
+          try {
+            sa = JSON.parse(serviceAccountJson);
+          } catch (e) {
+            // Try to repair common formatting: replace escaped newlines then parse
+            try {
+              const repaired = serviceAccountJson.replace(/\\n/g, '\n');
+              sa = JSON.parse(repaired);
+            } catch (e2) {
+              sa = null;
+            }
           }
         }
 
-        // Fallback to individual env vars if provided
-        if (projectId && clientEmail && privateKeyRaw) {
-          const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
-          admin.initializeApp({
-            credential: admin.credential.cert({
-              projectId,
-              clientEmail,
-              privateKey,
-            }),
-          });
-          return;
+        // Normalize and supplement from individual env vars if needed
+        if (sa) {
+          sa.project_id = sa.project_id || sa.projectId || projectIdEnv;
+          sa.client_email = sa.client_email || sa.clientEmail || clientEmailEnv;
+          if (typeof sa.private_key === 'string') sa.private_key = sa.private_key.replace(/\\n/g, '\n');
+        } else if (projectIdEnv && clientEmailEnv && privateKeyRawEnv) {
+          sa = {
+            project_id: projectIdEnv,
+            client_email: clientEmailEnv,
+            private_key: privateKeyRawEnv.replace(/\\n/g, '\n'),
+          };
         }
 
-        // If we reach here, Firebase credentials are not configured; skip init to avoid crash.
-        // The app will continue to run without admin SDK features (auth guards relying on Firebase client still work for token verification elsewhere).
-        // Log a clear warning so deploys can detect missing config.
-        // eslint-disable-next-line no-console
-        console.warn(
-          'Firebase admin SDK not initialized: missing FIREBASE_SERVICE_ACCOUNT or FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY env vars',
-        );
+        const hasRequired = sa && typeof sa.project_id === 'string' && sa.project_id && typeof sa.client_email === 'string' && sa.client_email && typeof sa.private_key === 'string' && sa.private_key;
+
+        if (hasRequired) {
+          try {
+            admin.initializeApp({
+              credential: admin.credential.cert({
+                projectId: sa.project_id,
+                clientEmail: sa.client_email,
+                privateKey: sa.private_key,
+              } as any),
+            });
+            // eslint-disable-next-line no-console
+            console.log('Firebase admin SDK initialized');
+          } catch (initErr) {
+            // eslint-disable-next-line no-console
+            console.error('Firebase admin SDK initialization error:', initErr && initErr.message ? initErr.message : initErr);
+          }
+        } else {
+          // eslint-disable-next-line no-console
+          console.warn('Skipping Firebase admin init: missing service account project_id/client_email/private_key');
+        }
       } catch (err) {
-        // If parsing or initialization fails, log and continue to avoid crashing the whole app.
         // eslint-disable-next-line no-console
-        console.error('Failed to initialize Firebase admin SDK:', err?.message || err);
+        console.error('Unexpected error while preparing Firebase admin SDK:', err && err.message ? err.message : err);
       }
     }
   }
