@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#1a1a2e"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.cerebral.app",
@@ -27,9 +29,15 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1a1a2e"
       },
-      "permissions": ["NOTIFICATIONS", "ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "NOTIFICATIONS",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "plugins": [
       [
         "expo-notifications",
@@ -41,8 +49,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID"
+        "projectId": "d64603b1-35d7-4f8e-9666-e289de3a869c"
       }
-    }
+    },
+    "owner": "kevaughn"
   }
 }
