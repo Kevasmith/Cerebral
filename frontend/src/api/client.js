@@ -10,8 +10,7 @@ import {
 } from 'firebase/auth';
 import * as SecureStore from 'expo-secure-store';
 
-// Update to your backend URL. Use ngrok or Railway URL for device testing.
-export const API_BASE = 'http://localhost:3000/api/v1';
+export const API_BASE = 'https://cerebral-production.up.railway.app/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE,
