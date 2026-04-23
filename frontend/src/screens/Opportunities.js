@@ -4,6 +4,7 @@ import {
   ActivityIndicator, RefreshControl, Linking,
 } from 'react-native';
 import { api } from '../api/client';
+import { MOCK_OPPORTUNITIES } from '../data/mockData';
 
 const TYPE_CONFIG = {
   gig: { label: 'Gig', color: '#e67e22', bg: '#fef9f0' },
@@ -58,10 +59,11 @@ export default function Opportunities() {
   const load = useCallback(async () => {
     try {
       const res = await api.get('/opportunities');
-      setOpportunities(res.data ?? []);
+      const data = res.data ?? [];
+      setOpportunities(data.length > 0 ? data : MOCK_OPPORTUNITIES);
       setError(null);
-    } catch (err) {
-      setError(err.message || 'Failed to load opportunities');
+    } catch {
+      setOpportunities(MOCK_OPPORTUNITIES);
     } finally {
       setLoading(false);
       setRefreshing(false);

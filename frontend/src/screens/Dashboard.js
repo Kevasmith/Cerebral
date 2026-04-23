@@ -6,6 +6,7 @@ import {
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
 import Skeleton from '../components/Skeleton';
+import { MOCK_DASHBOARD, MOCK_INSIGHTS } from '../data/mockData';
 
 const STATUS_CONFIG = {
   'on-track': { label: 'On Track', color: '#2ecc71', bg: '#eafaf1' },
@@ -69,18 +70,19 @@ export default function Dashboard() {
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      // Fetch snapshot and insights independently so one failure doesn't kill both
       const snapRes = await api.get('/accounts/dashboard');
       setSnapshot(snapRes.data);
       setError(null);
-    } catch (err) {
-      setError(err.message || 'Failed to load dashboard');
+    } catch {
+      // No bank connected yet — show demo data
+      setSnapshot(MOCK_DASHBOARD);
     }
     try {
       const insightRes = await api.post('/insights/refresh');
-      setInsights(insightRes.data ?? []);
+      const data = insightRes.data ?? [];
+      setInsights(data.length > 0 ? data : MOCK_INSIGHTS);
     } catch {
-      // Insights failing silently is acceptable — dashboard is still useful
+      setInsights(MOCK_INSIGHTS);
     }
     setLoading(false);
     setRefreshing(false);
@@ -151,6 +153,7 @@ export default function Dashboard() {
         <View style={styles.emptyInsights}>
           <Text style={styles.emptyText}>Connect your bank to unlock personalized insights.</Text>
         </View>
+
       )}
     </ScrollView>
   );

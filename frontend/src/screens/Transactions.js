@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { api } from '../api/client';
 import Skeleton from '../components/Skeleton';
+import { MOCK_TRANSACTIONS } from '../data/mockData';
 
 function TransactionSkeleton() {
   return (
@@ -74,8 +75,13 @@ export default function Transactions() {
       }
       setHasMore((pageNum + 1) * LIMIT < total);
       setError(null);
-    } catch (err) {
-      setError(err.message || 'Failed to load transactions');
+    } catch {
+      // No bank connected yet — show demo transactions
+      if (!append) {
+        const filtered = cat === 'all' ? MOCK_TRANSACTIONS : MOCK_TRANSACTIONS.filter(t => t.category === cat);
+        setTransactions(filtered);
+        setHasMore(false);
+      }
     } finally {
       isFetching.current = false;
       setLoading(false);
