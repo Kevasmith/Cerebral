@@ -1,13 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  RefreshControl,
-  ActivityIndicator,
+  View, Text, FlatList, StyleSheet, TouchableOpacity,
+  ScrollView, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { api } from '../api/client';
 import Skeleton from '../components/Skeleton';
@@ -35,19 +29,8 @@ function TransactionSkeleton() {
 
 const skeletonRow = { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' };
 
-const CATEGORIES = [
-  'all',
-  'food',
-  'transport',
-  'entertainment',
-  'shopping',
-  'bills',
-  'health',
-  'travel',
-  'income',
-  'transfer',
-  'other',
-];
+const CATEGORIES = ['all', 'food', 'transport', 'entertainment', 'shopping', 'bills', 'health', 'travel', 'income', 'transfer', 'other'];
+const LIMIT = 20;
 
 function TransactionItem({ item }) {
   return (
@@ -64,82 +47,78 @@ function TransactionItem({ item }) {
 }
 
 export default function Transactions() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [error, setError] = useState(null);
   const [category, setCategory] = useState('all');
   const [page, setPage] = useState(0);
-  const [limit] = useState(20);
-  const [total, setTotal] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const isFetching = useRef(false);
 
-  const fetchTransactions = useCallback(
-    async ({ reset = false } = {}) => {
-      try {
-        if (reset) {
-          setPage(0);
-        }
-        setLoading(true);
-        const offset = (reset ? 0 : page * limit);
-        const params = { limit, offset };
-        if (category && category !== 'all') params.category = category;
-
-        const res = await api.get('/transactions', { params });
-        const data = res.data || {};
-        const items = data.transactions || data;
-
-        if (reset) {
-          setTransactions(items);
-        } else {
-          setTransactions((prev) => [...prev, ...items]);
-        }
-
-        setTotal(data.total ?? items.length + (reset ? 0 : transactions.length));
-      } catch (err) {
-        setError(err.message || 'Failed to load transactions');
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
+  const fetchPage = useCallback(async (cat, pageNum, append = false) => {
+    if (isFetching.current) return;
+    isFetching.current = true;
+    try {
+      const params = { limit: LIMIT, offset: pageNum * LIMIT };
+      if (cat !== 'all') params.category = cat;
+      const res = await api.get('/transactions', { params });
+      const data = res.data ?? {};
+      const items = Array.isArray(data) ? data : (data.transactions ?? []);
+      const total = data.total ?? items.length;
+      if (append) {
+        setTransactions((prev) => [...prev, ...items]);
+      } else {
+        setTransactions(items);
       }
-    },
-    [category, limit, page, transactions.length],
-  );
-
-  useEffect(() => {
-    // load first page when category changes
-    setTransactions([]);
-    setPage(0);
-    fetchTransactions({ reset: true });
-  }, [category]);
-
-  useEffect(() => {
-    // initial load
-    fetchTransactions({ reset: true });
+      setHasMore((pageNum + 1) * LIMIT < total);
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to load transactions');
+    } finally {
+      isFetching.current = false;
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+    }
   }, []);
 
-  const loadMore = () => {
-    if (loading) return;
-    const nextOffset = (page + 1) * limit;
-    if (total && nextOffset >= total) return;
-    setPage((p) => p + 1);
-    // fetch for next page after state updates
-  };
-
-  // fetch when page changes (except initial 0 handled by reset)
+  // Reset and reload when category changes
   useEffect(() => {
-    if (page === 0) return;
-    fetchTransactions();
-  }, [page]);
+    setTransactions([]);
+    setPage(0);
+    setHasMore(true);
+    setLoading(true);
+    fetchPage(category, 0, false);
+  }, [category]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTransactions([]);
     setPage(0);
-    fetchTransactions({ reset: true });
+    setHasMore(true);
+    fetchPage(category, 0, false);
   };
 
-  if (loading && transactions.length === 0) return <View style={styles.container}><TransactionSkeleton /></View>;
-  if (error && transactions.length === 0) return <View style={styles.center}><Text>{error}</Text></View>;
+  const loadMore = () => {
+    if (loadingMore || !hasMore || loading) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    setLoadingMore(true);
+    fetchPage(category, nextPage, true);
+  };
+
+  if (loading) return <View style={styles.container}><TransactionSkeleton /></View>;
+  if (error && transactions.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity onPress={onRefresh} style={styles.retryBtn}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -163,26 +142,33 @@ export default function Transactions() {
         renderItem={({ item }) => <TransactionItem item={item} />}
         ItemSeparatorComponent={() => <View style={styles.sep} />}
         onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={0.4}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListFooterComponent={() => (
-          loading && transactions.length > 0 ? <ActivityIndicator style={{ margin: 12 }} /> : null
-        )}
+        ListEmptyComponent={
+          <View style={styles.center}>
+            <Text style={styles.emptyText}>No transactions found.</Text>
+          </View>
+        }
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 16 }} color="#1a1a2e" /> : null}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  desc: { fontSize: 16, fontWeight: '500' },
-  meta: { color: '#666', marginTop: 4 },
-  amount: { fontSize: 16, fontWeight: '700' },
-  sep: { height: 1, backgroundColor: '#eee' },
-  catBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f2f2f2', marginHorizontal: 6 },
-  catBtnActive: { backgroundColor: '#007bff' },
-  catText: { color: '#333', textTransform: 'capitalize' },
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+  desc: { fontSize: 15, fontWeight: '500', color: '#1a1a2e' },
+  meta: { color: '#999', marginTop: 3, fontSize: 12 },
+  amount: { fontSize: 15, fontWeight: '700' },
+  sep: { height: 1, backgroundColor: '#f0f0f0', marginLeft: 16 },
+  catBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginHorizontal: 4 },
+  catBtnActive: { backgroundColor: '#1a1a2e' },
+  catText: { color: '#555', textTransform: 'capitalize', fontSize: 13, fontWeight: '600' },
   catTextActive: { color: '#fff' },
+  emptyText: { color: '#aaa', fontSize: 14 },
+  errorText: { color: '#c0392b', marginBottom: 16, fontSize: 14 },
+  retryBtn: { backgroundColor: '#1a1a2e', borderRadius: 8, paddingHorizontal: 24, paddingVertical: 10 },
+  retryText: { color: '#fff', fontWeight: '600' },
 });

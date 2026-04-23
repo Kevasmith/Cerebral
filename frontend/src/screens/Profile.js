@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Switch, ActivityIndicator, Alert,
+  Switch, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import useAuthStore from '../store/authStore';
+
+function confirmSignOut(onConfirm) {
+  if (Platform.OS === 'web') {
+    if (window.confirm('Are you sure you want to sign out?')) onConfirm();
+  } else {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: onConfirm },
+    ]);
+  }
+}
 
 const GOAL_LABEL = {
   save_more: 'Save More 🏦',
@@ -32,17 +43,10 @@ export default function Profile() {
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          setSigningOut(true);
-          try { await signOut(); } finally { setSigningOut(false); }
-        },
-      },
-    ]);
+    confirmSignOut(async () => {
+      setSigningOut(true);
+      try { await signOut(); } finally { setSigningOut(false); }
+    });
   };
 
   const interests = (preferences?.interests ?? [])
