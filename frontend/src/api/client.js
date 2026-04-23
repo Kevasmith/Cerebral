@@ -8,7 +8,26 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+
+// Web uses localStorage; native uses SecureStore
+const storage = {
+  async getItem(key) {
+    if (Platform.OS === 'web') return localStorage.getItem(key);
+    const SS = require('expo-secure-store');
+    return SS.getItemAsync(key);
+  },
+  async setItem(key, value) {
+    if (Platform.OS === 'web') { localStorage.setItem(key, value); return; }
+    const SS = require('expo-secure-store');
+    return SS.setItemAsync(key, value);
+  },
+  async deleteItem(key) {
+    if (Platform.OS === 'web') { localStorage.removeItem(key); return; }
+    const SS = require('expo-secure-store');
+    return SS.deleteItemAsync(key);
+  },
+};
 
 export const API_BASE = 'https://cerebral-production.up.railway.app/api/v1';
 
@@ -24,7 +43,7 @@ function parseJwt(token) {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
     return payload;
   } catch (e) {
     return null;
@@ -86,7 +105,7 @@ export function initFirebase(firebaseConfig) {
         const token = await user.getIdToken();
         api.defaults.headers.common.Authorization = `Bearer ${token}`;
         try {
-          await SecureStore.setItemAsync('cerebral_id_token', token);
+          await storage.setItem('cerebral_id_token', token);
         } catch (e) {
           // ignore secure store errors
         }
@@ -95,7 +114,7 @@ export function initFirebase(firebaseConfig) {
       } else {
         delete api.defaults.headers.common.Authorization;
         try {
-          await SecureStore.deleteItemAsync('cerebral_id_token');
+          await storage.deleteItem('cerebral_id_token');
         } catch (e) {}
         cancelScheduledRefresh();
       }
@@ -104,7 +123,7 @@ export function initFirebase(firebaseConfig) {
     // Try to restore token from secure storage if present
     (async () => {
       try {
-        const stored = await SecureStore.getItemAsync('cerebral_id_token');
+        const stored = await storage.getItem('cerebral_id_token');
         if (stored && !api.defaults.headers.common.Authorization) {
           api.defaults.headers.common.Authorization = `Bearer ${stored}`;
         }
@@ -126,7 +145,7 @@ export async function ensureAnonymousAuth() {
     const token = await auth.currentUser?.getIdToken();
     if (token) {
       try {
-        await SecureStore.setItemAsync('cerebral_id_token', token);
+        await storage.setItem('cerebral_id_token', token);
       } catch (e) {}
       // schedule proactive refresh
       scheduleTokenRefreshForToken(token);
@@ -141,7 +160,7 @@ export async function signOut() {
   if (!auth) return;
   await firebaseSignOut(auth);
   try {
-    await SecureStore.deleteItemAsync('cerebral_id_token');
+    await storage.deleteItem('cerebral_id_token');
   } catch (e) {}
   cancelScheduledRefresh();
 }
@@ -155,7 +174,7 @@ export async function signInWithEmail(email, password) {
   const token = await cred.user.getIdToken();
   api.defaults.headers.common.Authorization = `Bearer ${token}`;
   try {
-    await SecureStore.setItemAsync('cerebral_id_token', token);
+    await storage.setItem('cerebral_id_token', token);
   } catch (e) {}
   // schedule proactive refresh
   scheduleTokenRefreshForToken(token);
@@ -171,7 +190,7 @@ export async function signUpWithEmail(email, password) {
   const token = await cred.user.getIdToken();
   api.defaults.headers.common.Authorization = `Bearer ${token}`;
   try {
-    await SecureStore.setItemAsync('cerebral_id_token', token);
+    await storage.setItem('cerebral_id_token', token);
   } catch (e) {}
   // schedule proactive refresh
   scheduleTokenRefreshForToken(token);
@@ -183,7 +202,7 @@ export async function signUpWithEmail(email, password) {
  */
 export async function restoreTokenFromStore() {
   try {
-    const token = await SecureStore.getItemAsync('cerebral_id_token');
+    const token = await storage.getItem('cerebral_id_token');
     if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
     return token;
   } catch (e) {
@@ -211,7 +230,7 @@ async function refreshIdTokenSilently() {
       const token = await auth.currentUser.getIdToken(true);
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
       try {
-        await SecureStore.setItemAsync('cerebral_id_token', token);
+        await storage.setItem('cerebral_id_token', token);
       } catch (e) {}
       return token;
     }
@@ -222,7 +241,7 @@ async function refreshIdTokenSilently() {
     if (token) {
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
       try {
-        await SecureStore.setItemAsync('cerebral_id_token', token);
+        await storage.setItem('cerebral_id_token', token);
       } catch (e) {}
     }
     return token;
@@ -244,7 +263,7 @@ api.interceptors.response.use(
     if (originalRequest._retry) {
       // Second 401 after refresh — clear credentials so auth state resets
       delete api.defaults.headers.common.Authorization;
-      try { await SecureStore.deleteItemAsync('cerebral_id_token'); } catch (_) {}
+      try { await storage.deleteItem('cerebral_id_token'); } catch (_) {}
       return Promise.reject(error);
     }
     originalRequest._retry = true;
