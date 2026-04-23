@@ -1,11 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 
 import { initFirebase, api } from './src/api/client';
 import useAuthStore from './src/store/authStore';
@@ -72,15 +71,19 @@ export default function App() {
     }
     init();
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {});
+    // Push notifications are native-only
+    if (Platform.OS !== 'web') {
+      const Notifications = require('expo-notifications');
+      notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {});
+    }
+
     return () => {
       notificationListener.current?.remove();
       responseListener.current?.remove();
     };
   }, []);
 
-  // Register push token once the user is authenticated
   useEffect(() => {
     if (!user) return;
     registerForPushNotifications()

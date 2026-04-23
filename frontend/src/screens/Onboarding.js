@@ -1,12 +1,14 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, SafeAreaView,
+  ScrollView, ActivityIndicator, SafeAreaView, Platform,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
+
+// WebView is native-only — lazy load so the web bundle doesn't crash
+const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
 
 // The redirect URL Flinks will navigate to on success — intercepted in the WebView
 const FLINKS_REDIRECT = 'https://cerebral.app/bank-connected';
@@ -259,7 +261,8 @@ function InterestsStep({ goal, onFinish }) {
 // ─── Root Onboarding ──────────────────────────────────────────────────────────
 
 export default function Onboarding() {
-  const [step, setStep] = useState(0);
+  // Bank connection (step 0) requires a native WebView — skip on web
+  const [step, setStep] = useState(Platform.OS === 'web' ? 1 : 0);
   const [goal, setGoal] = useState(null);
 
   if (step === 0) {

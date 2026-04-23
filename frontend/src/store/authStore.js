@@ -1,26 +1,31 @@
 import { create } from 'zustand';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { signInWithEmail, signUpWithEmail, signOut, api } from '../api/client';
 
 const useAuthStore = create((set, get) => ({
-  user: null,          // Firebase user object
-  profile: null,       // Cerebral user profile from backend
-  preferences: null,   // User preferences
+  user: null,
+  profile: null,
+  preferences: null,
   isLoading: true,
   isOnboarded: false,
 
   init: () => {
-    const auth = getAuth();
-    onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
-        api.defaults.headers.common.Authorization = `Bearer ${token}`;
-        set({ user: firebaseUser, isLoading: false });
-        get().fetchProfile();
-      } else {
-        set({ user: null, profile: null, preferences: null, isLoading: false, isOnboarded: false });
-      }
-    });
+    try {
+      const { getAuth, onAuthStateChanged } = require('firebase/auth');
+      const auth = getAuth();
+      onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+          const token = await firebaseUser.getIdToken();
+          api.defaults.headers.common.Authorization = `Bearer ${token}`;
+          set({ user: firebaseUser, isLoading: false });
+          get().fetchProfile();
+        } else {
+          set({ user: null, profile: null, preferences: null, isLoading: false, isOnboarded: false });
+        }
+      });
+    } catch {
+      // Firebase not initialized (missing env vars) — unblock loading
+      set({ isLoading: false });
+    }
   },
 
   signIn: async (email, password) => {
@@ -31,7 +36,6 @@ const useAuthStore = create((set, get) => ({
 
   signUp: async (email, password, displayName) => {
     const cred = await signUpWithEmail(email, password);
-    // Register profile on backend
     await api.post('/users/register', { email, displayName });
     set({ user: cred.user });
     await get().fetchProfile();
@@ -52,7 +56,7 @@ const useAuthStore = create((set, get) => ({
       const isOnboarded = !!(prefs?.goal && prefs?.interests?.length > 0);
       set({ profile: profileRes.data, preferences: prefs, isOnboarded });
     } catch {
-      // Profile may not exist yet — that's fine
+      // Profile may not exist yet
     }
   },
 
