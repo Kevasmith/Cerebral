@@ -66,7 +66,7 @@ function ConnectBankStep({ onConnected, onSkip }) {
       await api.post('/accounts/sync', { loginId });
       setConnected(true);
     } catch {
-      setError('Bank connected but sync failed. You can continue — we'll retry in the background.');
+      setError("Bank connected but sync failed. You can continue — we'll retry in the background.");
       setConnected(true);
     } finally {
       setSyncing(false);

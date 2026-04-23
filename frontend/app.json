@@ -36,8 +36,17 @@
     },
     "platforms": [
       "ios",
-      "android"
+      "android",
+      "web"
     ],
+    "web": {
+      "favicon": "./assets/icon.png",
+      "name": "Cerebral",
+      "shortName": "Cerebral",
+      "description": "Your financial awareness starts here.",
+      "themeColor": "#1a1a2e",
+      "backgroundColor": "#f8f9fa"
+    },
     "plugins": [
       [
         "expo-notifications",
