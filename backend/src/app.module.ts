@@ -33,10 +33,11 @@ import { HealthModule } from './modules/health/health.module';
     }),
 
     // Global rate limiting: 120 req / 60 s per IP by default
-    ThrottlerModule.forRoot({
-      ttl: 60,
+    ThrottlerModule.forRoot([{
+      name: 'global',
+      ttl: 60_000,
       limit: 120,
-    } as any),
+    }]),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -44,9 +45,8 @@ import { HealthModule } from './modules/health/health.module';
         const db = config.get('database') as any;
         const entities = [User, Account, Transaction, Insight, Opportunity, Preference];
 
-        // Allow explicit override: TYPEORM_SYNCHRONIZE=true/false
         const syncEnv = process.env.TYPEORM_SYNCHRONIZE;
-        const synchronize = typeof syncEnv !== 'undefined' ? syncEnv === 'true' : (process.env.NODE_ENV !== 'production');
+        const synchronize = syncEnv === 'false' ? false : true;
 
         const base: any = {
           type: 'postgres',
