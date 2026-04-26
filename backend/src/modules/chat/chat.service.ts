@@ -38,20 +38,31 @@ export class ChatService {
     try {
       const user = await this.usersService.findByBetterAuthId(betterAuthId);
       const prefs = await this.usersService.getPreferences(user.id);
-      const dashboard = await this.accountsService.getDashboardSnapshot(user.id);
 
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const spending = await this.transactionsService.getCategorySpending(user.id, monthStart, monthEnd);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [dashboard, { transactions: recent }] = await Promise.all([
+        this.accountsService.getDashboardSnapshot(user.id),
+        this.transactionsService.getUserTransactions(user.id, { startDate: sevenDaysAgo, limit: 8 }),
+      ]);
 
-      const topCategory = spending.length
-        ? spending.sort((a, b) => b.total - a.total)[0].category
+      const spendingByCategory = dashboard.spendingByCategory
+        .filter((s) => s.category !== TransactionCategory.INCOME)
+        .map((s) => ({ category: s.category, total: s.total }));
+
+      const topCategory = spendingByCategory.length
+        ? spendingByCategory[0].category
         : TransactionCategory.OTHER;
 
-      const monthlySpending = spending
-        .filter((s) => s.category !== TransactionCategory.INCOME)
-        .reduce((sum, s) => sum + s.total, 0);
+      const monthlySpending = spendingByCategory.reduce((sum, s) => sum + s.total, 0);
+
+      const nowMs = Date.now();
+      const recentTransactions = recent.map((t) => ({
+        description: t.description ?? t.merchantName ?? 'Transaction',
+        amount: Number(t.amount),
+        isDebit: t.isDebit,
+        category: t.category,
+        daysAgo: Math.floor((nowMs - new Date(t.date).getTime()) / 86_400_000),
+      }));
 
       return {
         totalCash: dashboard.totalCashAvailable,
@@ -59,6 +70,16 @@ export class ChatService {
         topCategory,
         userGoal: prefs.goal ?? UserGoal.SAVE_MORE,
         userInterests: (prefs.interests ?? []) as UserInterest[],
+        userName: user.displayName ?? undefined,
+        location: prefs.location ?? undefined,
+        spendingByCategory,
+        accounts: dashboard.accounts.map((a) => ({
+          name: a.accountName ?? a.institutionName ?? 'Account',
+          type: a.accountType,
+          balance: Number(a.balance),
+        })),
+        spendingTrend: dashboard.spendingTrend,
+        recentTransactions,
       };
     } catch {
       return {
@@ -66,6 +87,10 @@ export class ChatService {
         monthlySpending: 0,
         topCategory: TransactionCategory.OTHER,
         userGoal: UserGoal.SAVE_MORE,
+        spendingByCategory: [],
+        accounts: [],
+        spendingTrend: { currentMonth: 0, previousMonth: 0, percentageChange: 0, direction: 'stable' },
+        recentTransactions: [],
       };
     }
   }

@@ -19,6 +19,12 @@ export interface ChatContext {
   topCategory: string;
   userGoal: UserGoal;
   userInterests?: UserInterest[];
+  userName?: string;
+  location?: string;
+  spendingByCategory: { category: string; total: number }[];
+  accounts: { name: string; type: string; balance: number }[];
+  spendingTrend: { currentMonth: number; previousMonth: number; percentageChange: number; direction: string };
+  recentTransactions: { description: string; amount: number; isDebit: boolean; category: string; daysAgo: number }[];
 }
 
 export interface WeeklySummaryContext {
@@ -120,7 +126,7 @@ export class AiService {
           { role: 'system', content: skill },
           { role: 'user', content: dynamicPrompt },
         ],
-        max_tokens: 220,
+        max_tokens: 300,
         temperature: 0.8,
       });
 
@@ -254,13 +260,40 @@ ${trigger}
 Generate the insight card now.`;
   }
 
-  private buildChatUserMessage(message: string, context: ChatContext): string {
-    return `USER FINANCIAL CONTEXT:
-- Available cash: $${context.totalCash.toFixed(2)} CAD
-- Monthly spending: $${context.monthlySpending.toFixed(2)} CAD
-- Top spending category: ${context.topCategory}
-- Financial goal: ${context.userGoal}
-${context.userInterests?.length ? `- Interests: ${context.userInterests.join(', ')}` : ''}
+  private buildChatUserMessage(message: string, ctx: ChatContext): string {
+    const trendArrow = ctx.spendingTrend.direction === 'up' ? '↑' : ctx.spendingTrend.direction === 'down' ? '↓' : '→';
+    const trendPct = Math.abs(ctx.spendingTrend.percentageChange).toFixed(1);
+
+    const accountLines = ctx.accounts.length
+      ? ctx.accounts.map((a) => `  ${a.name} (${a.type}): $${a.balance.toFixed(2)} CAD`).join('\n')
+      : '  No accounts connected';
+
+    const categoryLines = ctx.spendingByCategory.length
+      ? ctx.spendingByCategory.slice(0, 6).map((s) => `  ${s.category}: $${s.total.toFixed(2)}`).join('\n')
+      : '  No spending data this month';
+
+    const recentLines = ctx.recentTransactions.length
+      ? ctx.recentTransactions.slice(0, 6).map((t) => {
+          const when = t.daysAgo === 0 ? 'today' : t.daysAgo === 1 ? 'yesterday' : `${t.daysAgo}d ago`;
+          return `  ${t.isDebit ? '-' : '+'}$${Math.abs(t.amount).toFixed(2)} · ${t.description} (${t.category}) · ${when}`;
+        }).join('\n')
+      : '  No recent transactions';
+
+    return `USER PROFILE:
+${ctx.userName ? `- Name: ${ctx.userName}` : ''}
+- Goal: ${ctx.userGoal}
+${ctx.userInterests?.length ? `- Interests: ${ctx.userInterests.join(', ')}` : ''}
+- Location: ${ctx.location ?? 'Canada'}
+
+ACCOUNTS:
+${accountLines}
+
+THIS MONTH: $${ctx.monthlySpending.toFixed(2)} spent (${trendArrow}${trendPct}% vs last month)
+SPENDING BY CATEGORY:
+${categoryLines}
+
+RECENT TRANSACTIONS (last 7 days):
+${recentLines}
 
 USER MESSAGE: ${message}`;
   }
