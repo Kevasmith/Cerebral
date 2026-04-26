@@ -34,7 +34,7 @@ export const MOCK_INSIGHTS = [
   },
   {
     id: 'mock-3',
-    type: 'savings_opportunity',
+    type: 'savings_tip',
     title: 'You spend $127/month on subscriptions',
     body: "Netflix, Spotify, Apple One, and Amazon Prime total $127/month. Cutting one service saves $1,524/year — enough to max out a TFSA contribution in 5 years.",
     isRead: true,
@@ -114,3 +114,21 @@ export const MOCK_CHAT_CONTEXT = {
   topCategory: 'food',
   userGoal: 'save_more',
 };
+
+export const MOCK_MONTHLY_SPENDING = [
+  { month: 'Nov', amount: 1654 },
+  { month: 'Dec', amount: 2210 },
+  { month: 'Jan', amount: 1820 },
+  { month: 'Feb', amount: 1480 },
+  { month: 'Mar', amount: 1876 },
+  { month: 'Apr', amount: 2135 },
+];
+
+export const MOCK_SPENDING_BREAKDOWN = [
+  { category: 'Bills', amount: 1462.44, color: '#e74c3c', icon: 'home-outline', budget: 1500 },
+  { category: 'Food', amount: 487.14, color: '#e67e22', icon: 'restaurant-outline', budget: 400 },
+  { category: 'Transport', amount: 168.20, color: '#3498db', icon: 'car-outline', budget: 200 },
+  { category: 'Entertainment', amount: 55.93, color: '#9b59b6', icon: 'film-outline', budget: 100 },
+  { category: 'Shopping', amount: 111.81, color: '#27ae60', icon: 'bag-outline', budget: 150 },
+  { category: 'Health', amount: 34.18, color: '#1abc9c', icon: 'heart-outline', budget: 100 },
+];

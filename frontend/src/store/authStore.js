@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { signInWithEmail, signUpWithEmail, signOut, api } from '../api/client';
+import { authClient } from '../api/authClient';
+import { api, setSession, clearSession, restoreSession } from '../api/client';
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -8,41 +9,47 @@ const useAuthStore = create((set, get) => ({
   isLoading: true,
   isOnboarded: false,
 
-  init: () => {
+  init: async () => {
     try {
-      const { getAuth, onAuthStateChanged } = require('firebase/auth');
-      const auth = getAuth();
-      onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          const token = await firebaseUser.getIdToken();
-          api.defaults.headers.common.Authorization = `Bearer ${token}`;
-          set({ user: firebaseUser, isLoading: false });
-          get().fetchProfile();
-        } else {
-          set({ user: null, profile: null, preferences: null, isLoading: false, isOnboarded: false });
-        }
-      });
+      const token = await restoreSession();
+      if (!token) { set({ isLoading: false }); return; }
+
+      const { data: session } = await authClient.getSession();
+      if (session?.user) {
+        set({ user: session.user, isLoading: false });
+        get().fetchProfile();
+      } else {
+        await clearSession();
+        set({ isLoading: false });
+      }
     } catch {
-      // Firebase not initialized (missing env vars) — unblock loading
       set({ isLoading: false });
     }
   },
 
   signIn: async (email, password) => {
-    const cred = await signInWithEmail(email, password);
-    set({ user: cred.user });
+    const { data, error } = await authClient.signIn.email({ email, password });
+    if (error) throw new Error(error.message || 'Sign in failed');
+    if (data?.token) await setSession(data.token);
+    set({ user: data.user });
+    // Ensure user record exists in our DB (upsert is idempotent)
+    try { await api.post('/users/register', { email, displayName: data.user?.name }); } catch {}
     await get().fetchProfile();
   },
 
   signUp: async (email, password, displayName) => {
-    const cred = await signUpWithEmail(email, password);
-    await api.post('/users/register', { email, displayName });
-    set({ user: cred.user });
+    const { data, error } = await authClient.signUp.email({ email, password, name: displayName });
+    if (error) throw new Error(error.message || 'Sign up failed');
+    if (data?.token) await setSession(data.token);
+    set({ user: data.user });
+    // Register is best-effort; backend updatePreferences will upsert if this fails
+    try { await api.post('/users/register', { email, displayName }); } catch {}
     await get().fetchProfile();
   },
 
   signOut: async () => {
-    await signOut();
+    await authClient.signOut();
+    await clearSession();
     set({ user: null, profile: null, preferences: null, isOnboarded: false });
   },
 
@@ -56,7 +63,7 @@ const useAuthStore = create((set, get) => ({
       const isOnboarded = !!(prefs?.goal && prefs?.interests?.length > 0);
       set({ profile: profileRes.data, preferences: prefs, isOnboarded });
     } catch {
-      // Profile may not exist yet
+      // Profile may not exist yet (new user before register call)
     }
   },
 

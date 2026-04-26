@@ -78,7 +78,7 @@ function ConnectBankStep({ onConnected, onSkip }) {
   if (syncing) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1a1a2e" />
+        <ActivityIndicator size="large" color="#0F172A" />
         <Text style={styles.syncingText}>Importing your accounts...</Text>
         <Text style={styles.syncingSub}>This takes a few seconds</Text>
       </View>
@@ -90,14 +90,14 @@ function ConnectBankStep({ onConnected, onSkip }) {
       <SafeAreaView style={styles.webViewContainer}>
         <View style={styles.webViewHeader}>
           <TouchableOpacity onPress={() => setShowWebView(false)} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color="#1a1a2e" />
+            <Ionicons name="close" size={22} color="#0F172A" />
           </TouchableOpacity>
           <Text style={styles.webViewTitle}>Connect Your Bank</Text>
           <View style={{ width: 40 }} />
         </View>
         {!webViewReady && (
           <View style={styles.webViewLoader}>
-            <ActivityIndicator size="large" color="#1a1a2e" />
+            <ActivityIndicator size="large" color="#0F172A" />
           </View>
         )}
         <WebView
@@ -122,7 +122,7 @@ function ConnectBankStep({ onConnected, onSkip }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.bankIllustration}>
-        <Ionicons name="shield-checkmark" size={56} color="#1a1a2e" />
+        <Ionicons name="shield-checkmark" size={56} color="#0F172A" />
       </View>
 
       <Text style={styles.heading}>Connect your bank</Text>
@@ -132,7 +132,7 @@ function ConnectBankStep({ onConnected, onSkip }) {
 
       {connected ? (
         <View style={styles.successCard}>
-          <Ionicons name="checkmark-circle" size={24} color="#2ecc71" />
+          <Ionicons name="checkmark-circle" size={24} color="#0a9165" />
           <Text style={styles.successText}>Bank connected successfully!</Text>
         </View>
       ) : null}
@@ -222,8 +222,8 @@ function InterestsStep({ goal, onFinish }) {
     setLoading(true);
     try {
       const { profile } = useAuthStore.getState();
-      const location = profile?.location || 'Edmonton, AB';
-      await savePreferences({ goal, interests, location });
+      const location = profile?.location || '';
+      await savePreferences({ goal, interests, ...(location && { location }) });
     } catch {
       setError('Could not save preferences. Try again.');
     } finally {
@@ -284,8 +284,8 @@ export default function Onboarding() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, backgroundColor: '#f8f9fa', justifyContent: 'center' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa', padding: 24 },
+  container: { flexGrow: 1, padding: 24, backgroundColor: '#F8FAFC', justifyContent: 'center' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 24 },
 
   // Bank step
   bankIllustration: { alignItems: 'center', marginBottom: 24 },
@@ -293,42 +293,42 @@ const styles = StyleSheet.create({
   trustChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#e8e8e8', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   trustText: { fontSize: 11, color: '#555', fontWeight: '500' },
   successCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eafaf1', borderRadius: 12, padding: 14, marginBottom: 16 },
-  successText: { fontSize: 15, fontWeight: '600', color: '#1a1a2e' },
+  successText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
   skipBtn: { alignItems: 'center', marginTop: 16 },
   skipText: { color: '#888', fontSize: 14 },
-  syncingText: { fontSize: 17, fontWeight: '700', color: '#1a1a2e', marginTop: 20 },
+  syncingText: { fontSize: 17, fontWeight: '700', color: '#0F172A', marginTop: 20 },
   syncingSub: { fontSize: 14, color: '#888', marginTop: 6 },
 
   // WebView
   webViewContainer: { flex: 1, backgroundColor: '#fff' },
   webViewHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  webViewTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a2e' },
+  webViewTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
   closeBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   webView: { flex: 1 },
   webViewLoader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
 
   // Shared
-  heading: { fontSize: 26, fontWeight: '800', color: '#1a1a2e', marginBottom: 8 },
+  heading: { fontSize: 26, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
   sub: { fontSize: 15, color: '#666', marginBottom: 28 },
-  btn: { backgroundColor: '#1a1a2e', borderRadius: 12, padding: 16, alignItems: 'center' },
+  btn: { backgroundColor: '#0F172A', borderRadius: 12, padding: 16, alignItems: 'center' },
   btnDisabled: { backgroundColor: '#ccc' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  error: { color: '#c0392b', marginBottom: 12, fontSize: 13 },
+  error: { color: '#EF4444', marginBottom: 12, fontSize: 13 },
 
   // Goal step
   options: { gap: 12, marginBottom: 32 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, borderWidth: 2, borderColor: '#e0e0e0' },
-  cardSelected: { borderColor: '#1a1a2e', backgroundColor: '#f0f0ff' },
+  cardSelected: { borderColor: '#0F172A', backgroundColor: '#f0f0ff' },
   cardEmoji: { fontSize: 28, marginBottom: 6 },
-  cardLabel: { fontSize: 17, fontWeight: '700', color: '#1a1a2e' },
-  cardLabelSelected: { color: '#1a1a2e' },
+  cardLabel: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
+  cardLabelSelected: { color: '#0F172A' },
   cardDesc: { fontSize: 13, color: '#888', marginTop: 4 },
 
   // Interests step
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 32 },
   chip: { width: '47%', backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', borderWidth: 2, borderColor: '#e0e0e0' },
-  chipActive: { borderColor: '#1a1a2e', backgroundColor: '#f0f0ff' },
+  chipActive: { borderColor: '#0F172A', backgroundColor: '#f0f0ff' },
   chipEmoji: { fontSize: 26, marginBottom: 6 },
   chipLabel: { fontSize: 14, fontWeight: '600', color: '#555' },
-  chipLabelActive: { color: '#1a1a2e' },
+  chipLabelActive: { color: '#0F172A' },
 });

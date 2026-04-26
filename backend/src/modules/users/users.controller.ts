@@ -58,10 +58,19 @@ export class UsersController {
 
   @Patch('me/preferences')
   async updatePreferences(
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; email: string; name?: string },
     @Body() dto: UpdatePreferencesDto,
   ) {
-    const profile = await this.usersService.findByBetterAuthId(user.id);
+    let profile;
+    try {
+      profile = await this.usersService.findByBetterAuthId(user.id);
+    } catch {
+      // User exists in Better Auth but not in our DB (e.g. first sign-in after failed register)
+      profile = await this.usersService.upsert(user.id, {
+        email: user.email,
+        displayName: user.name,
+      });
+    }
     return this.usersService.updatePreferences(profile.id, dto);
   }
 }

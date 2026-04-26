@@ -5,6 +5,11 @@ node_modules/
 .env
 .env.local
 .env.*.local
+backend/.env
+frontend/.env
+
+# Deployment scripts that source live secrets — never commit
+set-railway-vars.sh
 
 # Build output
 dist/

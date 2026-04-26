@@ -5,5 +5,8 @@
     "dev": "bun run --cwd frontend dev",
     "dev:backend": "bun run --cwd backend dev",
     "dev:all": "bun run dev:backend & bun run dev"
+  },
+  "dependencies": {
+    "@better-auth/infra": "^0.2.5"
   }
 }

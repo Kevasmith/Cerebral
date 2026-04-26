@@ -1,27 +1,26 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
-import { initFirebase } from '../api/client';
+import { Ionicons } from '@expo/vector-icons';
 import useAuthStore from '../store/authStore';
 
-const FIREBASE_CONFIG = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-};
+const IS_WEB = Platform.OS === 'web';
+
+function alert(msg) {
+  if (IS_WEB) window.alert(msg);
+  else Alert.alert('Info', msg);
+}
 
 export default function SignIn() {
-  const [mode, setMode] = useState('signin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [mode, setMode]               = useState('signin');
+  const [email, setEmail]             = useState('');
+  const [password, setPassword]       = useState('');
+  const [name, setName]               = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState('');
 
   const { signIn, signUp } = useAuthStore();
 
@@ -36,79 +35,325 @@ export default function SignIn() {
     return null;
   };
 
-  const FIREBASE_ERRORS = {
-    'auth/user-not-found': 'No account found with that email.',
-    'auth/wrong-password': 'Incorrect password.',
-    'auth/invalid-credential': 'Incorrect email or password.',
-    'auth/email-already-in-use': 'An account with that email already exists.',
-    'auth/too-many-requests': 'Too many attempts. Try again later.',
-    'auth/network-request-failed': 'Network error. Check your connection.',
-    'auth/weak-password': 'Password must be at least 8 characters.',
-  };
-
   const submit = async () => {
-    const validationError = validate();
-    if (validationError) { setError(validationError); return; }
+    const err = validate();
+    if (err) { setError(err); return; }
     setError('');
     setLoading(true);
     try {
-      initFirebase(FIREBASE_CONFIG);
-      if (mode === 'signin') {
-        await signIn(email.trim(), password);
-      } else {
-        await signUp(email.trim(), password, name.trim());
-      }
+      if (mode === 'signin') await signIn(email.trim(), password);
+      else await signUp(email.trim(), password, name.trim());
     } catch (e) {
-      const code = e.code ?? '';
-      setError(FIREBASE_ERRORS[code] || e.message || 'Something went wrong. Try again.');
+      setError(e.message || 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.inner}>
-        <Text style={styles.logo}>Cerebral</Text>
-        <Text style={styles.tagline}>Your financial awareness starts here.</Text>
+    <View style={styles.root}>
 
-        {mode === 'signup' && (
-          <TextInput style={styles.input} placeholder="Your name" value={name} onChangeText={setName} autoCapitalize="words" />
-        )}
-        <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <TextInput style={styles.input} placeholder="Password (min 8 characters)" value={password} onChangeText={setPassword} secureTextEntry />
-        {mode === 'signup' && password.length > 0 && password.length < 8 && (
-          <Text style={styles.hint}>Password must be at least 8 characters</Text>
-        )}
+      {/* Dark navy → blue gradient background */}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          IS_WEB
+            ? { backgroundImage: 'linear-gradient(145deg, #0F172A 0%, #0b2018 28%, #085c3a 58%, #0a9165 100%)' }
+            : { backgroundColor: '#0F172A' },
+        ]}
+      />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      {/* Radial glow overlay */}
+      {IS_WEB && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundImage:
+                'radial-gradient(ellipse 80% 60% at 70% 10%, rgba(10,145,101,0.3) 0%, transparent 65%)',
+            },
+          ]}
+        />
+      )}
 
-        <TouchableOpacity style={styles.btn} onPress={submit} disabled={loading}>
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnText}>{mode === 'signin' ? 'Sign In' : 'Create Account'}</Text>
-          }
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}>
-          <Text style={styles.toggle}>
-            {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-          </Text>
-        </TouchableOpacity>
+      {/* Cerebral logo — top left */}
+      <View style={styles.logoArea}>
+        <View style={styles.logoIconWrap}>
+          <Ionicons name="analytics-outline" size={13} color="#fff" />
+        </View>
+        <Text style={styles.logoText}>Cerebral</Text>
       </View>
-    </KeyboardAvoidingView>
+
+      {/* Card */}
+      <KeyboardAvoidingView
+        style={styles.cardArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Gradient border: outer View with gradient bg + 1.5px "padding" */}
+        <View
+          style={[
+            styles.cardBorder,
+            IS_WEB && {
+              backgroundImage:
+                'linear-gradient(150deg, rgba(10,145,101,0.6) 0%, rgba(255,255,255,0.05) 48%, rgba(15,23,42,0.6) 100%)',
+            },
+            !IS_WEB && styles.cardBorderNative,
+          ]}
+        >
+          <View
+            style={[
+              styles.card,
+              IS_WEB && {
+                backdropFilter: 'blur(28px)',
+                WebkitBackdropFilter: 'blur(28px)',
+                backgroundColor: 'rgba(255,255,255,0.72)',
+              },
+            ]}
+          >
+            {/* Icon */}
+            <View style={styles.iconWrap}>
+              <Ionicons name="log-in-outline" size={22} color="#0F172A" />
+            </View>
+
+            <Text style={styles.title}>
+              {mode === 'signin' ? 'Sign in to Cerebral' : 'Create your account'}
+            </Text>
+            <Text style={styles.subtitle}>
+              Your AI-powered financial awareness starts here.
+            </Text>
+
+            {/* Name — signup only */}
+            {mode === 'signup' && (
+              <View style={styles.inputRow}>
+                <Ionicons name="person-outline" size={15} color="#b0b8c1" style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, IS_WEB && { outlineStyle: 'none' }]}
+                  placeholder="Your name"
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  placeholderTextColor="#c4cdd6"
+                />
+              </View>
+            )}
+
+            {/* Email */}
+            <View style={styles.inputRow}>
+              <Ionicons name="mail-outline" size={15} color="#b0b8c1" style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, IS_WEB && { outlineStyle: 'none' }]}
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#c4cdd6"
+              />
+            </View>
+
+            {/* Password */}
+            <View style={styles.inputRow}>
+              <Ionicons name="lock-closed-outline" size={15} color="#b0b8c1" style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }, IS_WEB && { outlineStyle: 'none' }]}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                placeholderTextColor="#c4cdd6"
+              />
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
+                <Ionicons
+                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={16}
+                  color="#b0b8c1"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Forgot password */}
+            <TouchableOpacity
+              style={styles.forgotRow}
+              onPress={() => alert('Password reset is coming soon. Contact support for help.')}
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+
+            {/* Error */}
+            {!!error && <Text style={styles.errorText}>{error}</Text>}
+
+            {/* CTA */}
+            <TouchableOpacity style={styles.btn} onPress={submit} disabled={loading}>
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.btnText}>
+                    {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                  </Text>
+              }
+            </TouchableOpacity>
+
+            {/* Toggle mode */}
+            <TouchableOpacity
+              onPress={() => { setMode((m) => m === 'signin' ? 'signup' : 'signin'); setError(''); }}
+            >
+              <Text style={styles.toggleText}>
+                {mode === 'signin'
+                  ? "Don't have an account? Sign up"
+                  : 'Already have an account? Sign in'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerLabel}>Or sign in with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Social buttons */}
+            <View style={styles.socialRow}>
+              <TouchableOpacity
+                style={styles.socialBtn}
+                onPress={() => alert('Google sign-in is coming soon.')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.googleG}>G</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.socialBtn}
+                onPress={() => alert('Facebook sign-in is coming soon.')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="logo-facebook" size={19} color="#1877F2" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.socialBtn}
+                onPress={() => alert('Apple sign-in is coming soon.')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="logo-apple" size={20} color="#111" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
-  logo: { fontSize: 36, fontWeight: '800', color: '#1a1a2e', marginBottom: 8 },
-  tagline: { fontSize: 16, color: '#666', marginBottom: 36 },
-  input: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, fontSize: 16, borderWidth: 1, borderColor: '#e0e0e0' },
-  btn: { backgroundColor: '#1a1a2e', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  toggle: { color: '#007bff', textAlign: 'center', marginTop: 20, fontSize: 14 },
-  error: { color: '#c0392b', marginBottom: 8, fontSize: 13 },
-  hint: { color: '#e67e22', fontSize: 12, marginTop: -8, marginBottom: 8 },
+  root: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+  },
+
+  logoArea: {
+    position: 'absolute',
+    top: 24, left: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 10,
+  },
+  logoIconWrap: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: '#0a9165',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  logoText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  cardArea: {
+    width: '100%',
+    maxWidth: 380,
+    paddingHorizontal: 20,
+  },
+
+  cardBorder: {
+    borderRadius: 26,
+    padding: 1.5,
+    backgroundColor: 'transparent',
+  },
+  cardBorderNative: {
+    borderWidth: 1,
+    borderColor: 'rgba(10,145,101,0.35)',
+  },
+
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderRadius: 25,
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.35,
+    shadowRadius: 48,
+    elevation: 14,
+  },
+
+  iconWrap: {
+    width: 52, height: 52, borderRadius: 16,
+    backgroundColor: '#EFEBE0',
+    justifyContent: 'center', alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 22,
+  },
+
+  title: {
+    fontSize: 21, fontWeight: '800', color: '#0F172A',
+    textAlign: 'center', marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 13, color: '#8c98a8',
+    textAlign: 'center', lineHeight: 19, marginBottom: 24,
+  },
+
+  inputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#EFEBE0',
+    borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 13,
+    marginBottom: 10,
+  },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 14, color: '#0F172A' },
+  eyeBtn: { paddingLeft: 8 },
+
+  forgotRow: { alignItems: 'flex-end', marginBottom: 18, marginTop: 2 },
+  forgotText: { fontSize: 13, color: '#8c98a8', fontWeight: '500' },
+
+  errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center', marginBottom: 10 },
+
+  btn: {
+    backgroundColor: '#0F172A',
+    borderRadius: 13, paddingVertical: 15,
+    alignItems: 'center', marginBottom: 14,
+    shadowColor: '#0a9165',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35, shadowRadius: 14,
+    elevation: 6,
+  },
+  btnText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
+
+  toggleText: {
+    color: '#8c98a8', textAlign: 'center',
+    fontSize: 13, marginBottom: 22,
+  },
+
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+  dividerLine:  { flex: 1, height: 1, backgroundColor: '#ECE8DC' },
+  dividerLabel: { fontSize: 12, color: '#b0b8c1', fontWeight: '500' },
+
+  socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 14 },
+  socialBtn: {
+    width: 60, height: 48, borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1, borderColor: '#ECE8DC',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  googleG: { fontSize: 17, fontWeight: '800', color: '#EA4335' },
 });

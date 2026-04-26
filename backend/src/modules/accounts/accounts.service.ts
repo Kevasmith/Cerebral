@@ -183,9 +183,7 @@ export class AccountsService {
   /**
    * Get dashboard snapshot for the current user
    */
-  async getDashboardSnapshot(
-    userId: string,
-  ): Promise<{
+  async getDashboardSnapshot(userId: string): Promise<{
     totalCashAvailable: number;
     spendingTrend: {
       currentMonth: number;
@@ -195,13 +193,19 @@ export class AccountsService {
     };
     status: 'on-track' | 'overspending' | 'underspending';
     accounts: Account[];
+    spendingByCategory: { category: string; total: number; count: number }[];
   }> {
-    const [totalCashAvailable, spendingTrend, status, accounts] =
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const [totalCashAvailable, spendingTrend, status, accounts, spendingByCategory] =
       await Promise.all([
         this.getTotalCashAvailable(userId),
         this.getSpendingTrend(userId),
         this.getFinancialStatus(userId),
         this.accountRepo.find({ where: { userId } }),
+        this.transactionsService.getCategorySpending(userId, monthStart, monthEnd),
       ]);
 
     return {
@@ -209,6 +213,7 @@ export class AccountsService {
       spendingTrend,
       status,
       accounts,
+      spendingByCategory,
     };
   }
 }
