@@ -8,17 +8,7 @@ export class HealthController {
   @Get()
   async getHealth() {
     const [db, redis] = await Promise.all([this.health.checkDatabase(), this.health.checkRedis()]);
-    const fb = this.health.checkFirebase();
-
-    const ok = db.ok && redis.ok && fb.ok;
-
-    return {
-      status: ok ? 'ok' : 'degraded',
-      checks: {
-        database: db,
-        redis,
-        firebase: fb,
-      },
-    };
+    const ok = db.ok && redis.ok;
+    return { status: ok ? 'ok' : 'degraded', checks: { database: db, redis } };
   }
 }

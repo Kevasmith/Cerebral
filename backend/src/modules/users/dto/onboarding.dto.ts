@@ -1,16 +1,31 @@
-import { IsEnum, IsOptional, IsString, IsArray, IsBoolean } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, IsArray, IsBoolean, MaxLength } from 'class-validator';
 import { UserGoal, UserInterest } from '../../../entities/preference.entity';
 
 export class RegisterDto {
-  @IsString()
+  @IsEmail()
+  @MaxLength(254)
   email: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   displayName?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
+  location?: string;
+}
+
+export class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  displayName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
   location?: string;
 }
 
@@ -26,6 +41,7 @@ export class UpdatePreferencesDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   location?: string;
 
   @IsOptional()

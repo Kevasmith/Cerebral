@@ -8,6 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { Account } from './account.entity';
+import { encryptedTransformer } from '../common/crypto/column-encryption';
 
 export enum TransactionCategory {
   FOOD = 'food',
@@ -33,7 +34,7 @@ export class Transaction {
   @Column({ nullable: true })
   flinksTransactionId: string;
 
-  @Column()
+  @Column({ transformer: encryptedTransformer })
   description: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
@@ -52,7 +53,7 @@ export class Transaction {
   @Column({ type: 'varchar', length: 3, default: 'CAD' })
   currency: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, transformer: encryptedTransformer })
   merchantName: string;
 
   @CreateDateColumn()

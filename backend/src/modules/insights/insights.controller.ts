@@ -1,45 +1,59 @@
 import { Controller, Get, Post, Patch, Param, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { IsUUID } from 'class-validator';
 import { InsightsService } from './insights.service';
-import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
+import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 
+class InsightIdParamDto {
+  @IsUUID()
+  id: string;
+}
+
 @Controller('insights')
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class InsightsController {
   constructor(
     private readonly insightsService: InsightsService,
     private readonly usersService: UsersService,
   ) {}
 
-  // Run insight engine + return fresh cards
+  // Run insight engine + return fresh cards — 6 per minute keeps DB/AI load bounded
+  @Throttle({ global: { limit: 6, ttl: 60_000 } })
   @Post('refresh')
-  async refresh(@CurrentUser() user: { uid: string }) {
-    const profile = await this.usersService.findByFirebaseUid(user.uid);
+  async refresh(@CurrentUser() user: { id: string }) {
+    const profile = await this.usersService.findByBetterAuthId(user.id);
     return this.insightsService.refreshAndGetInsights(profile.id);
   }
 
   // Get active (non-expired) insights without re-running engine
   @Get()
-  async getInsights(@CurrentUser() user: { uid: string }) {
-    const profile = await this.usersService.findByFirebaseUid(user.uid);
+  async getInsights(@CurrentUser() user: { id: string }) {
+    const profile = await this.usersService.findByBetterAuthId(user.id);
     return this.insightsService.getActiveInsights(profile.id);
   }
 
   @Get('unread-count')
-  async getUnreadCount(@CurrentUser() user: { uid: string }) {
-    const profile = await this.usersService.findByFirebaseUid(user.uid);
+  async getUnreadCount(@CurrentUser() user: { id: string }) {
+    const profile = await this.usersService.findByBetterAuthId(user.id);
     const count = await this.insightsService.getUnreadCount(profile.id);
     return { count };
   }
 
   @Patch(':id/read')
   async markRead(
-    @Param('id') insightId: string,
-    @CurrentUser() user: { uid: string },
+    @Param() params: InsightIdParamDto,
+    @CurrentUser() user: { id: string },
   ) {
-    const profile = await this.usersService.findByFirebaseUid(user.uid);
-    await this.insightsService.markRead(insightId, profile.id);
+    const profile = await this.usersService.findByBetterAuthId(user.id);
+    await this.insightsService.markRead(params.id, profile.id);
     return { success: true };
+  }
+
+  @Get('weekly-summary')
+  async getWeeklySummary(@CurrentUser() user: { id: string }) {
+    const profile = await this.usersService.findByBetterAuthId(user.id);
+    return this.insightsService.getWeeklySummary(profile.id);
   }
 }

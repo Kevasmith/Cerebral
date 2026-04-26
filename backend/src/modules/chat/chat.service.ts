@@ -4,7 +4,7 @@ import { AccountsService } from '../accounts/accounts.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { UsersService } from '../users/users.service';
 import { TransactionCategory } from '../../entities/transaction.entity';
-import { UserGoal } from '../../entities/preference.entity';
+import { UserGoal, UserInterest } from '../../entities/preference.entity';
 
 // Only block direct execution advice, not educational queries
 const EXECUTION_PATTERNS = [
@@ -25,18 +25,18 @@ export class ChatService {
     private readonly usersService: UsersService,
   ) {}
 
-  async ask(firebaseUid: string, message: string): Promise<string> {
+  async ask(betterAuthId: string, message: string): Promise<string> {
     if (this.isExecutionAdvice(message)) {
       return "I can't tell you what to buy or sell — that's investment execution advice. But I can explain how different options work, what the risks are, or how to get started. What would you like to learn?";
     }
 
-    const context = await this.buildContext(firebaseUid);
+    const context = await this.buildContext(betterAuthId);
     return this.ai.generateChatResponse(message, context);
   }
 
-  private async buildContext(firebaseUid: string) {
+  private async buildContext(betterAuthId: string) {
     try {
-      const user = await this.usersService.findByFirebaseUid(firebaseUid);
+      const user = await this.usersService.findByBetterAuthId(betterAuthId);
       const prefs = await this.usersService.getPreferences(user.id);
       const dashboard = await this.accountsService.getDashboardSnapshot(user.id);
 
@@ -58,6 +58,7 @@ export class ChatService {
         monthlySpending,
         topCategory,
         userGoal: prefs.goal ?? UserGoal.SAVE_MORE,
+        userInterests: (prefs.interests ?? []) as UserInterest[],
       };
     } catch {
       return {

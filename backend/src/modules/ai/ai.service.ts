@@ -2,13 +2,47 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { UserGoal, UserInterest } from '../../entities/preference.entity';
+import { SkillLoaderService } from './skill-loader.service';
 
-interface InsightContext {
+export interface InsightContext {
   type: string;
   data: Record<string, any>;
   userGoal: UserGoal;
   userInterests: UserInterest[];
   userName?: string;
+  location?: string;
+}
+
+export interface ChatContext {
+  totalCash: number;
+  monthlySpending: number;
+  topCategory: string;
+  userGoal: UserGoal;
+  userInterests?: UserInterest[];
+}
+
+export interface WeeklySummaryContext {
+  userGoal: UserGoal;
+  location?: string;
+  thisWeekTotal: number;
+  lastWeekTotal: number;
+  topCategory: string;
+  categories: { category: string; total: number }[];
+  incomeThisWeek: number;
+}
+
+export interface OpportunityMatchContext {
+  userGoal: UserGoal;
+  userInterests: UserInterest[];
+  location: string;
+  topSpendingCategory: string;
+  availableCash: number;
+  opportunity: {
+    type: string;
+    title: string;
+    description: string;
+    location: string | null;
+  };
 }
 
 @Injectable()
@@ -16,7 +50,10 @@ export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly client: OpenAI | null;
 
-  constructor(private config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly skills: SkillLoaderService,
+  ) {
     const apiKey = config.get<string>('OPENAI_API_KEY');
     if (apiKey) {
       try {
@@ -31,35 +68,33 @@ export class AiService {
     }
   }
 
-  async generateInsightCard(ctx: InsightContext): Promise<{ title: string; body: string }> {
-    // If OpenAI client is not available, use fallback directly
-    if (!this.client) {
-      return this.fallbackInsight(ctx);
-    }
+  // ─── Insight Generation ───────────────────────────────────────────────────
 
-    const prompt = this.buildInsightPrompt(ctx);
+  async generateInsightCard(ctx: InsightContext): Promise<{ title: string; body: string }> {
+    if (!this.client) return this.fallbackInsight(ctx);
+
+    const skill = this.skills.loadSkill('financial_insight.skill.md');
+    const dynamicPrompt = this.buildInsightUserMessage(ctx);
 
     try {
       const response = await this.client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1',
         messages: [
-          {
-            role: 'system',
-            content: `You are Cerebral, a friendly AI financial awareness coach.
-You give short, actionable, non-judgmental financial insights.
-Always respond in JSON with exactly two fields: "title" (max 10 words) and "body" (2-3 sentences, max 60 words).
-Be specific with numbers. Tone: direct, encouraging, never preachy.
-User's goal: ${ctx.userGoal}. Interests: ${ctx.userInterests.join(', ')}.`,
-          },
-          { role: 'user', content: prompt },
+          { role: 'system', content: skill },
+          { role: 'user', content: dynamicPrompt },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 200,
+        max_tokens: 250,
         temperature: 0.7,
       });
 
       const content = response.choices[0]?.message?.content ?? '{}';
       const parsed = JSON.parse(content) as { title: string; body: string };
+
+      if (!parsed.title || !parsed.body) {
+        this.logger.warn('Malformed insight response — using fallback');
+        return this.fallbackInsight(ctx);
+      }
       return parsed;
     } catch (err) {
       this.logger.error('OpenAI insight generation failed', err);
@@ -67,59 +102,218 @@ User's goal: ${ctx.userGoal}. Interests: ${ctx.userInterests.join(', ')}.`,
     }
   }
 
-  async generateChatResponse(
-    rawMessage: string,
-    context: {
-      totalCash: number;
-      monthlySpending: number;
-      topCategory: string;
-      userGoal: UserGoal;
-    },
-  ): Promise<string> {
-    // If OpenAI client is not available, use fallback directly
+  // ─── Chat Response ────────────────────────────────────────────────────────
+
+  async generateChatResponse(rawMessage: string, context: ChatContext): Promise<string> {
     if (!this.client) {
-      return "I'm temporarily unavailable, but I've recorded your question. Try again shortly.";
+      return "I'm temporarily unavailable — try again shortly.";
     }
 
-    const userMessage = this.sanitizeUserMessage(rawMessage);
+    const sanitized = this.sanitizeUserMessage(rawMessage);
+    const skill = this.skills.loadSkill('ai_chat.skill.md');
+    const dynamicPrompt = this.buildChatUserMessage(sanitized, context);
+
     try {
       const response = await this.client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1',
         messages: [
-          {
-            role: 'system',
-            content: `You are Cerebral, a friendly AI financial awareness assistant.
-You help users understand their money — never give direct investment advice.
-Context: user has $${context.totalCash.toFixed(2)} available, spent $${context.monthlySpending.toFixed(2)} this month, top category is ${context.topCategory}. Goal: ${context.userGoal}.
-Keep answers under 80 words. Be conversational and specific.`,
-          },
-          { role: 'user', content: userMessage },
+          { role: 'system', content: skill },
+          { role: 'user', content: dynamicPrompt },
         ],
-        max_tokens: 200,
+        max_tokens: 220,
         temperature: 0.8,
       });
 
-      return response.choices[0]?.message?.content ?? "I'm not sure — try rephrasing your question.";
+      return (
+        response.choices[0]?.message?.content ?? "I'm not sure — try rephrasing your question."
+      );
     } catch (err) {
       this.logger.error('OpenAI chat failed', err);
       return "I'm having trouble right now. Try again in a moment.";
     }
   }
 
-  private buildInsightPrompt(ctx: InsightContext): string {
-    const prompts: Record<string, string> = {
-      overspending: `User spent $${ctx.data.current} on ${ctx.data.category} this month vs $${ctx.data.previous} last month (${ctx.data.percentChange}% increase). Generate an insight with 2 concrete ways to reduce it + 1 way to redirect that money toward their goal.`,
-      idle_cash: `User has $${ctx.data.idleAmount} sitting in a low-yield account for over 30 days. Generate an insight explaining 3 simple, low-risk options to put it to work. No direct investment advice — explain options educationally.`,
-      income_trend: `User's income ${ctx.data.direction === 'up' ? 'increased' : 'decreased'} by $${ctx.data.delta} (${ctx.data.percentChange}%) compared to last month. Generate a relevant insight based on this trend.`,
-      monthly_overspend: `User spent $${ctx.data.current} this month vs $${ctx.data.previous} last month (${ctx.data.percentChange}% more overall). Summarize where the increase is likely coming from and suggest one immediate action.`,
-      savings_opportunity: `User regularly spends $${ctx.data.amount} on ${ctx.data.category}. Suggest 1 way to reduce this and 1 way to turn that saving into a step toward their goal.`,
-    };
+  // ─── Weekly Summary ───────────────────────────────────────────────────────
 
-    return prompts[ctx.type] ?? `Generate a financial insight for this data: ${JSON.stringify(ctx.data)}`;
+  async generateWeeklySummary(
+    ctx: WeeklySummaryContext,
+  ): Promise<{ headline: string; summary: string; priority: string }> {
+    if (!this.client) return this.fallbackWeeklySummary(ctx);
+
+    const skill = this.skills.loadSkill('weekly_summary.skill.md');
+    const dynamicPrompt = this.buildWeeklySummaryUserMessage(ctx);
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-4.1',
+        messages: [
+          { role: 'system', content: skill },
+          { role: 'user', content: dynamicPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 300,
+        temperature: 0.7,
+      });
+
+      const content = response.choices[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(content) as { headline: string; summary: string; priority: string };
+
+      if (!parsed.headline || !parsed.summary || !parsed.priority) {
+        return this.fallbackWeeklySummary(ctx);
+      }
+      return parsed;
+    } catch (err) {
+      this.logger.error('OpenAI weekly summary failed', err);
+      return this.fallbackWeeklySummary(ctx);
+    }
   }
 
-  // Strip prompt injection attempts before passing user text to the LLM.
-  // Removes role-override phrases, control characters, and repeated whitespace.
+  // ─── Opportunity Matching ─────────────────────────────────────────────────
+
+  async generateOpportunityMatch(
+    ctx: OpportunityMatchContext,
+  ): Promise<{ relevanceScore: number; matchReason: string; callToAction: string }> {
+    if (!this.client) {
+      return { relevanceScore: 5, matchReason: 'Relevant to your financial goals.', callToAction: 'Explore now' };
+    }
+
+    const skill = this.skills.loadSkill('opportunity_matching.skill.md');
+    const dynamicPrompt = this.buildOpportunityMatchUserMessage(ctx);
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-4.1',
+        messages: [
+          { role: 'system', content: skill },
+          { role: 'user', content: dynamicPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 150,
+        temperature: 0.6,
+      });
+
+      const content = response.choices[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(content) as {
+        relevanceScore: number;
+        matchReason: string;
+        callToAction: string;
+      };
+
+      return {
+        relevanceScore: Math.min(10, Math.max(1, Number(parsed.relevanceScore) || 5)),
+        matchReason: parsed.matchReason || 'Relevant to your current goal.',
+        callToAction: parsed.callToAction || 'Explore now',
+      };
+    } catch (err) {
+      this.logger.error('OpenAI opportunity match failed', err);
+      return { relevanceScore: 5, matchReason: 'Relevant to your financial goals.', callToAction: 'Explore now' };
+    }
+  }
+
+  // ─── User Message Builders ────────────────────────────────────────────────
+
+  private buildInsightUserMessage(ctx: InsightContext): string {
+    const triggerDescriptions: Record<string, string> = {
+      overspending: `TRIGGER: category_overspending
+CATEGORY: ${ctx.data.category}
+THIS MONTH: $${ctx.data.current}
+LAST MONTH: $${ctx.data.previous}
+CHANGE: +${ctx.data.percentChange}%`,
+
+      monthly_overspend: `TRIGGER: monthly_overspend
+TOTAL THIS MONTH: $${ctx.data.current}
+TOTAL LAST MONTH: $${ctx.data.previous}
+CHANGE: +${ctx.data.percentChange}%`,
+
+      idle_cash: `TRIGGER: idle_cash_detected
+IDLE AMOUNT: $${ctx.data.idleAmount}
+ACCOUNT TYPE: standard savings/chequing`,
+
+      income_trend: `TRIGGER: income_trend_${ctx.data.direction}
+DIRECTION: ${ctx.data.direction}
+CHANGE: $${ctx.data.delta} (${ctx.data.percentChange}%)`,
+
+      savings_opportunity: `TRIGGER: savings_opportunity
+CATEGORY: ${ctx.data.category}
+MONTHLY AMOUNT: $${ctx.data.amount}`,
+    };
+
+    const trigger =
+      triggerDescriptions[ctx.type] ??
+      `TRIGGER: ${ctx.type}\nDATA: ${JSON.stringify(ctx.data)}`;
+
+    return `USER PROFILE:
+- Location: ${ctx.location ?? 'Edmonton, AB, Canada'}
+- Financial goal: ${ctx.userGoal}
+- Interests: ${ctx.userInterests.length ? ctx.userInterests.join(', ') : 'general financial awareness'}
+${ctx.userName ? `- Name: ${ctx.userName}` : ''}
+
+FINANCIAL SNAPSHOT:
+${trigger}
+
+Generate the insight card now.`;
+  }
+
+  private buildChatUserMessage(message: string, context: ChatContext): string {
+    return `USER FINANCIAL CONTEXT:
+- Available cash: $${context.totalCash.toFixed(2)} CAD
+- Monthly spending: $${context.monthlySpending.toFixed(2)} CAD
+- Top spending category: ${context.topCategory}
+- Financial goal: ${context.userGoal}
+${context.userInterests?.length ? `- Interests: ${context.userInterests.join(', ')}` : ''}
+
+USER MESSAGE: ${message}`;
+  }
+
+  private buildWeeklySummaryUserMessage(ctx: WeeklySummaryContext): string {
+    const change = ctx.thisWeekTotal - ctx.lastWeekTotal;
+    const pct = ctx.lastWeekTotal > 0
+      ? ((change / ctx.lastWeekTotal) * 100).toFixed(1)
+      : '0';
+    const direction = change > 0 ? 'up' : change < 0 ? 'down' : 'flat';
+
+    const categoryList = ctx.categories
+      .slice(0, 5)
+      .map((c) => `  - ${c.category}: $${c.total.toFixed(2)}`)
+      .join('\n');
+
+    return `USER PROFILE:
+- Financial goal: ${ctx.userGoal}
+- Location: ${ctx.location ?? 'Edmonton, AB, Canada'}
+
+THIS WEEK:
+- Total spent: $${ctx.thisWeekTotal.toFixed(2)}
+- vs last week: ${direction} $${Math.abs(change).toFixed(2)} (${Math.abs(Number(pct))}%)
+- Top category: ${ctx.topCategory}
+- Income received: $${ctx.incomeThisWeek.toFixed(2)}
+
+CATEGORY BREAKDOWN:
+${categoryList}
+
+LAST WEEK TOTAL: $${ctx.lastWeekTotal.toFixed(2)}
+
+Generate the weekly summary now.`;
+  }
+
+  private buildOpportunityMatchUserMessage(ctx: OpportunityMatchContext): string {
+    return `USER PROFILE:
+- Financial goal: ${ctx.userGoal}
+- Interests: ${ctx.userInterests.join(', ')}
+- Location: ${ctx.location}
+- Top spending category: ${ctx.topSpendingCategory}
+- Available cash: $${ctx.availableCash.toFixed(2)} CAD
+
+OPPORTUNITY:
+- Type: ${ctx.opportunity.type}
+- Title: ${ctx.opportunity.title}
+- Description: ${ctx.opportunity.description}
+- Location: ${ctx.opportunity.location ?? 'Remote / Canada'}
+
+Score this opportunity for this user and explain the match.`;
+  }
+
+  // ─── Prompt Injection Guard ───────────────────────────────────────────────
+
   private sanitizeUserMessage(message: string): string {
     const INJECTION_PATTERNS = [
       /ignore\s+(all\s+)?(previous|above|prior)\s+instructions?/gi,
@@ -136,9 +330,7 @@ Keep answers under 80 words. Be conversational and specific.`,
     ];
 
     let sanitized = message
-      // Strip null bytes and non-printable control characters (keep \n \t)
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-      // Collapse excessive whitespace
       .replace(/\s{3,}/g, '  ')
       .trim();
 
@@ -146,9 +338,10 @@ Keep answers under 80 words. Be conversational and specific.`,
       sanitized = sanitized.replace(pattern, '[removed]');
     }
 
-    // Hard cap at 500 chars (DTO already enforces this, but belt-and-suspenders)
     return sanitized.slice(0, 500);
   }
+
+  // ─── Fallbacks ────────────────────────────────────────────────────────────
 
   private fallbackInsight(ctx: InsightContext): { title: string; body: string } {
     const fallbacks: Record<string, { title: string; body: string }> = {
@@ -157,18 +350,36 @@ Keep answers under 80 words. Be conversational and specific.`,
         body: `You spent $${ctx.data.current} on ${ctx.data.category} this month — ${ctx.data.percentChange}% more than last month. Consider setting a weekly budget for this category to stay on track.`,
       },
       idle_cash: {
-        title: `$${ctx.data.idleAmount} is sitting idle`,
-        body: `You have $${ctx.data.idleAmount} that could be working harder. Consider a high-interest savings account or speak with a financial advisor about low-risk options.`,
+        title: `$${ctx.data.idleAmount} is sitting in a low-yield account`,
+        body: `That $${ctx.data.idleAmount} could earn significantly more in a high-interest savings account. A HISA typically offers 3–4% annually — worth exploring for the difference.`,
       },
       monthly_overspend: {
-        title: `You're spending more than last month`,
-        body: `Your total spending is up ${ctx.data.percentChange}% from last month. Review your top categories to find where the increase is coming from.`,
+        title: `Spending up ${ctx.data.percentChange}% vs last month`,
+        body: `Your total spending rose from $${ctx.data.previous} to $${ctx.data.current} this month. Review your top categories to pinpoint where the increase is coming from.`,
+      },
+      income_trend: {
+        title: `Income ${ctx.data.direction === 'up' ? 'increased' : 'dropped'} by $${ctx.data.delta}`,
+        body: `Your income ${ctx.data.direction === 'up' ? 'grew' : 'fell'} ${ctx.data.percentChange}% this month. ${ctx.data.direction === 'up' ? 'Consider saving a portion before it gets absorbed by expenses.' : 'Review discretionary spending to buffer any shortfall.'}`,
       },
     };
 
-    return fallbacks[ctx.type] ?? {
-      title: 'Financial insight available',
-      body: 'Check your spending patterns to find opportunities to save or grow your money.',
+    return (
+      fallbacks[ctx.type] ?? {
+        title: 'New financial insight available',
+        body: 'Check your spending patterns to find opportunities to save or grow your money.',
+      }
+    );
+  }
+
+  private fallbackWeeklySummary(
+    ctx: WeeklySummaryContext,
+  ): { headline: string; summary: string; priority: string } {
+    const change = ctx.thisWeekTotal - ctx.lastWeekTotal;
+    const direction = change > 0 ? 'up' : 'down';
+    return {
+      headline: `Spending ${direction} $${Math.abs(change).toFixed(0)} vs last week`,
+      summary: `You spent $${ctx.thisWeekTotal.toFixed(2)} this week — $${Math.abs(change).toFixed(2)} ${direction} from last week. Your top category was ${ctx.topCategory}. Reviewing this pattern weekly is the first step toward hitting your ${ctx.userGoal.replace('_', ' ')} goal.`,
+      priority: `Review your ${ctx.topCategory} spending and set a target for next week`,
     };
   }
 }

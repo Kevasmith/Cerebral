@@ -14,16 +14,12 @@ export class UsersService {
     private readonly preferenceRepo: Repository<Preference>,
   ) {}
 
-  // Called on first login — creates user + default preferences if not exists
-  async upsertFromFirebase(
-    firebaseUid: string,
-    dto: RegisterDto,
-  ): Promise<User> {
-    let user = await this.userRepo.findOne({ where: { firebaseUid } });
+  async upsert(betterAuthId: string, dto: Partial<RegisterDto>): Promise<User> {
+    let user = await this.userRepo.findOne({ where: { betterAuthId } });
 
     if (!user) {
       user = this.userRepo.create({
-        firebaseUid,
+        betterAuthId,
         email: dto.email,
         displayName: dto.displayName,
         location: dto.location,
@@ -43,9 +39,9 @@ export class UsersService {
     return user;
   }
 
-  async findByFirebaseUid(firebaseUid: string): Promise<User> {
+  async findByBetterAuthId(betterAuthId: string): Promise<User> {
     const user = await this.userRepo.findOne({
-      where: { firebaseUid },
+      where: { betterAuthId },
       relations: ['preference'],
     });
     if (!user) throw new NotFoundException('User not found');
@@ -58,31 +54,26 @@ export class UsersService {
     return pref;
   }
 
-  async updatePreferences(
-    userId: string,
-    dto: UpdatePreferencesDto,
-  ): Promise<Preference> {
+  async updatePreferences(userId: string, dto: UpdatePreferencesDto): Promise<Preference> {
     let pref = await this.preferenceRepo.findOne({ where: { userId } });
-
     if (!pref) {
       pref = this.preferenceRepo.create({ userId, goal: UserGoal.SAVE_MORE });
     }
-
     Object.assign(pref, dto);
     return this.preferenceRepo.save(pref);
   }
 
   async updateProfile(
-    firebaseUid: string,
+    betterAuthId: string,
     updates: Partial<Pick<User, 'displayName' | 'location'>>,
   ): Promise<User> {
-    const user = await this.findByFirebaseUid(firebaseUid);
+    const user = await this.findByBetterAuthId(betterAuthId);
     Object.assign(user, updates);
     return this.userRepo.save(user);
   }
 
-  async savePushToken(firebaseUid: string, expoPushToken: string): Promise<void> {
-    const user = await this.findByFirebaseUid(firebaseUid);
+  async savePushToken(betterAuthId: string, expoPushToken: string): Promise<void> {
+    const user = await this.findByBetterAuthId(betterAuthId);
     user.expoPushToken = expoPushToken;
     await this.userRepo.save(user);
   }

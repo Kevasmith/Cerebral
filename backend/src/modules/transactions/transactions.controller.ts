@@ -9,12 +9,19 @@ import {
 } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { UsersService } from '../users/users.service';
-import { Transaction, TransactionCategory } from '../../entities/transaction.entity';
-import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
+import { Transaction } from '../../entities/transaction.entity';
+import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import {
+  TransactionQueryDto,
+  SpendingSummaryQueryDto,
+  UpdateCategoryDto,
+  AccountIdParamDto,
+  TransactionIdParamDto,
+} from './dto/transaction-query.dto';
 
 @Controller('transactions')
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class TransactionsController {
   constructor(
     private readonly transactionsService: TransactionsService,
@@ -23,60 +30,51 @@ export class TransactionsController {
 
   @Get()
   async getUserTransactions(
-    @CurrentUser() user: { uid: string },
-    @Query('category') category?: TransactionCategory,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
+    @CurrentUser() user: { id: string },
+    @Query() query: TransactionQueryDto,
   ) {
-    const profile = await this.usersService.findByFirebaseUid(user.uid);
+    const profile = await this.usersService.findByBetterAuthId(user.id);
     return this.transactionsService.getUserTransactions(profile.id, {
-      category,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      limit: limit ? parseInt(limit, 10) : 50,
-      offset: offset ? parseInt(offset, 10) : 0,
+      category: query.category,
+      startDate: query.startDate ? new Date(query.startDate) : undefined,
+      endDate: query.endDate ? new Date(query.endDate) : undefined,
+      limit: query.limit ?? 50,
+      offset: query.offset ?? 0,
     });
   }
 
   @Get('account/:accountId')
   async getAccountTransactions(
-    @Param('accountId') accountId: string,
-    @Query('category') category?: TransactionCategory,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
+    @Param() params: AccountIdParamDto,
+    @Query() query: TransactionQueryDto,
   ) {
-    return this.transactionsService.getTransactions(accountId, {
-      category,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      limit: limit ? parseInt(limit, 10) : 50,
-      offset: offset ? parseInt(offset, 10) : 0,
+    return this.transactionsService.getTransactions(params.accountId, {
+      category: query.category,
+      startDate: query.startDate ? new Date(query.startDate) : undefined,
+      endDate: query.endDate ? new Date(query.endDate) : undefined,
+      limit: query.limit ?? 50,
+      offset: query.offset ?? 0,
     });
   }
 
   @Get('spending/summary')
   async getSpendingSummary(
-    @CurrentUser() user: { uid: string },
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
+    @CurrentUser() user: { id: string },
+    @Query() query: SpendingSummaryQueryDto,
   ) {
-    const profile = await this.usersService.findByFirebaseUid(user.uid);
+    const profile = await this.usersService.findByBetterAuthId(user.id);
     return this.transactionsService.getCategorySpending(
       profile.id,
-      new Date(startDate),
-      new Date(endDate),
+      new Date(query.startDate),
+      new Date(query.endDate),
     );
   }
 
   @Patch(':id/category')
   async updateTransactionCategory(
-    @Param('id') transactionId: string,
-    @Body('category') category: TransactionCategory,
+    @Param() params: TransactionIdParamDto,
+    @Body() body: UpdateCategoryDto,
   ): Promise<Transaction> {
-    return this.transactionsService.updateTransactionCategory(transactionId, category);
+    return this.transactionsService.updateTransactionCategory(params.id, body.category);
   }
 }

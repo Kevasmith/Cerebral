@@ -10,6 +10,7 @@ import {
 import { Account } from './account.entity';
 import { Insight } from './insight.entity';
 import { Preference } from './preference.entity';
+import { encryptedTransformer } from '../common/crypto/column-encryption';
 
 @Entity('users')
 export class User {
@@ -17,18 +18,18 @@ export class User {
   id: string;
 
   @Column({ unique: true })
-  firebaseUid: string;
+  betterAuthId: string;
 
-  @Column({ unique: true })
+  @Column({ transformer: encryptedTransformer })
   email: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, transformer: encryptedTransformer })
   displayName: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, transformer: encryptedTransformer })
   location: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, transformer: encryptedTransformer })
   expoPushToken: string;
 
   @CreateDateColumn()

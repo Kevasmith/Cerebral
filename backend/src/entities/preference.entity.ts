@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { encryptedTransformer } from '../common/crypto/column-encryption';
 
 export enum UserGoal {
   SAVE_MORE = 'save_more',
@@ -36,7 +37,7 @@ export class Preference {
   @Column({ type: 'simple-array', nullable: true })
   interests: UserInterest[];
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, transformer: encryptedTransformer })
   location: string;
 
   @Column({ default: true })

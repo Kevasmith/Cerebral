@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { Transaction } from './transaction.entity';
+import { encryptedTransformer } from '../common/crypto/column-encryption';
 
 export enum AccountType {
   CHECKING = 'checking',
@@ -29,10 +30,10 @@ export class Account {
   @Column()
   flinksAccountId: string;
 
-  @Column()
+  @Column({ transformer: encryptedTransformer })
   institutionName: string;
 
-  @Column()
+  @Column({ transformer: encryptedTransformer })
   accountName: string;
 
   @Column({ type: 'enum', enum: AccountType })
