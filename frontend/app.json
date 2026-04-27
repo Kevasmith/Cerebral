@@ -18,8 +18,10 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.cerebral.app",
       "buildNumber": "1",
+      "usesAppleSignIn": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Cerebral uses your location to surface local opportunities."
+        "NSLocationWhenInUseUsageDescription": "Cerebral uses your location to surface local financial opportunities.",
+        "NSUserNotificationsUsageDescription": "Cerebral sends you alerts when your spending changes or new AI insights are ready. You can turn this off at any time in Settings."
       }
     },
     "android": {
@@ -54,7 +56,8 @@
           "icon": "./assets/notification-icon.png",
           "color": "#1a1a2e"
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {

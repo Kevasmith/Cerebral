@@ -35,6 +35,7 @@ export class TransactionsController {
   ) {
     const profile = await this.usersService.findByBetterAuthId(user.id);
     return this.transactionsService.getUserTransactions(profile.id, {
+      search: query.search,
       category: query.category,
       startDate: query.startDate ? new Date(query.startDate) : undefined,
       endDate: query.endDate ? new Date(query.endDate) : undefined,

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { IsString, MaxLength } from 'class-validator';
 import { UsersService } from './users.service';
 import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
@@ -54,6 +54,12 @@ export class UsersController {
   ) {
     await this.usersService.savePushToken(user.id, body.expoPushToken);
     return { ok: true };
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteAccount(@CurrentUser() user: { id: string }) {
+    await this.usersService.deleteAccount(user.id);
   }
 
   @Patch('me/preferences')

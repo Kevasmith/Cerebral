@@ -11,12 +11,20 @@ const useAuthStore = create((set, get) => ({
 
   init: async () => {
     try {
-      const token = await restoreSession();
-      if (!token) { set({ isLoading: false }); return; }
-
+      // Always check live session — covers both stored-token and OAuth-redirect (cookie) flows
       const { data: session } = await authClient.getSession();
       if (session?.user) {
+        // Persist bearer token to localStorage so future loads don't need a cookie
+        const token = session.session?.token;
+        if (token) await setSession(token);
         set({ user: session.user, isLoading: false });
+        // Ensure user record exists in our DB (critical after first-time OAuth sign-in)
+        try {
+          await api.post('/users/register', {
+            email: session.user.email,
+            displayName: session.user.name,
+          });
+        } catch {}
         get().fetchProfile();
       } else {
         await clearSession();
@@ -70,6 +78,51 @@ const useAuthStore = create((set, get) => ({
   savePreferences: async (updates) => {
     const res = await api.patch('/users/me/preferences', updates);
     set({ preferences: res.data, isOnboarded: true });
+  },
+
+  updateDisplayName: async (displayName) => {
+    const res = await api.patch('/users/me', { displayName });
+    set((s) => ({ profile: { ...s.profile, ...res.data } }));
+  },
+
+  updateNotifications: async (enabled) => {
+    const res = await api.patch('/users/me/preferences', { notificationsEnabled: enabled });
+    set((s) => ({ preferences: { ...s.preferences, ...res.data } }));
+  },
+
+  signInWithApple: async (identityToken, fullName) => {
+    const { data, error } = await authClient.signIn.social({
+      provider: 'apple',
+      idToken: { token: identityToken },
+    });
+    if (error) throw new Error(error.message || 'Apple sign in failed');
+    if (data?.token) await setSession(data.token);
+    set({ user: data?.user });
+    const displayName = fullName
+      ? `${fullName.givenName ?? ''} ${fullName.familyName ?? ''}`.trim()
+      : null;
+    try {
+      await api.post('/users/register', {
+        email: data?.user?.email,
+        displayName: displayName || data?.user?.name,
+      });
+    } catch {}
+    await get().fetchProfile();
+  },
+
+  deleteAccount: async () => {
+    await api.delete('/users/me');
+    await authClient.signOut();
+    await clearSession();
+    set({ user: null, profile: null, preferences: null, isOnboarded: false });
+  },
+
+  sendPasswordReset: async (email) => {
+    const { error } = await authClient.forgetPassword({
+      email,
+      redirectTo: (typeof window !== 'undefined' ? window.location.origin : 'cerebral://') + '/reset-password',
+    });
+    if (error) throw new Error(error.message || 'Could not send reset email');
   },
 }));
 

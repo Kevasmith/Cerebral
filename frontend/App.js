@@ -18,6 +18,7 @@ import Transactions from './src/screens/Transactions';
 import Opportunities from './src/screens/Opportunities';
 import Chat from './src/screens/Chat';
 import Profile from './src/screens/Profile';
+import Upgrade from './src/screens/Upgrade';
 
 const WEB_MAX_WIDTH = 960;
 const IS_WEB = Platform.OS === 'web';
@@ -131,7 +132,10 @@ export default function App() {
           ) : !isOnboarded ? (
             <Stack.Screen name="Onboarding" component={Onboarding} />
           ) : (
-            <Stack.Screen name="Main" component={MainTabs} />
+            <>
+              <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen name="Upgrade" component={Upgrade} options={{ animation: 'slide_from_bottom' }} />
+            </>
           )}
         </Stack.Navigator>
       </NavigationContainer>

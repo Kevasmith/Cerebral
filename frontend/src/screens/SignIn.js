@@ -1,16 +1,89 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useAuthStore from '../store/authStore';
 
+let AppleAuthentication = null;
+try {
+  if (Platform.OS === 'ios') {
+    AppleAuthentication = require('expo-apple-authentication');
+  }
+} catch {}
+
 const IS_WEB = Platform.OS === 'web';
 
-function alert(msg) {
-  if (IS_WEB) window.alert(msg);
-  else Alert.alert('Info', msg);
+function ForgotModal({ visible, onClose }) {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+  const { sendPasswordReset } = useAuthStore();
+
+  const send = async () => {
+    if (!email.trim()) { setError('Enter your email address.'); return; }
+    setError('');
+    setLoading(true);
+    try {
+      await sendPasswordReset(email.trim());
+      setSent(true);
+    } catch (e) {
+      setError(e.message || 'Something went wrong. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const close = () => { setEmail(''); setSent(false); setError(''); onClose(); };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+      <View style={fStyles.overlay}>
+        <View style={fStyles.card}>
+          <Text style={fStyles.title}>Reset Password</Text>
+          {sent ? (
+            <>
+              <View style={fStyles.sentIcon}>
+                <Ionicons name="checkmark-circle" size={44} color="#0a9165" />
+              </View>
+              <Text style={fStyles.sentMsg}>Check your inbox — we've sent a password reset link to {email.trim()}.</Text>
+              <TouchableOpacity style={fStyles.doneBtn} onPress={close}>
+                <Text style={fStyles.doneBtnText}>Done</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={fStyles.sub}>Enter your email and we'll send you a reset link.</Text>
+              <View style={fStyles.inputRow}>
+                <Ionicons name="mail-outline" size={15} color="#b0b8c1" style={{ marginRight: 10 }} />
+                <TextInput
+                  style={[fStyles.input, IS_WEB && { outlineStyle: 'none' }]}
+                  placeholder="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholderTextColor="#c4cdd6"
+                  autoFocus
+                />
+              </View>
+              {!!error && <Text style={fStyles.error}>{error}</Text>}
+              <View style={fStyles.btnRow}>
+                <TouchableOpacity style={fStyles.cancelBtn} onPress={close}>
+                  <Text style={fStyles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={fStyles.sendBtn} onPress={send} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={fStyles.sendText}>Send Link</Text>}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 export default function SignIn() {
@@ -21,8 +94,25 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState('');
+  const [forgotVisible, setForgotVisible] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { signIn, signUp } = useAuthStore();
+  const { signIn, signUp, signInWithApple } = useAuthStore();
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setError('');
+    try {
+      const callbackURL = IS_WEB ? window.location.origin : 'cerebral://';
+      await authClient.signIn.social({ provider: 'google', callbackURL });
+      // On web this redirects the browser; execution stops here.
+      // On native we'd need expo-web-browser — not yet implemented.
+    } catch (e) {
+      setError(e.message || 'Google sign-in failed. Try again.');
+      setGoogleLoading(false);
+    }
+  };
 
   const validate = () => {
     if (!email.trim()) return 'Email is required.';
@@ -52,6 +142,7 @@ export default function SignIn() {
 
   return (
     <View style={styles.root}>
+      <ForgotModal visible={forgotVisible} onClose={() => setForgotVisible(false)} />
 
       {/* Dark navy → blue gradient background */}
       <View
@@ -174,7 +265,7 @@ export default function SignIn() {
             {/* Forgot password */}
             <TouchableOpacity
               style={styles.forgotRow}
-              onPress={() => alert('Password reset is coming soon. Contact support for help.')}
+              onPress={() => setForgotVisible(true)}
             >
               <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
@@ -203,40 +294,76 @@ export default function SignIn() {
               </Text>
             </TouchableOpacity>
 
-            {/* Divider */}
+            {/* Social sign-in */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerLabel}>Or sign in with</Text>
+              <Text style={styles.dividerLabel}>Or</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Social buttons */}
-            <View style={styles.socialRow}>
-              <TouchableOpacity
-                style={styles.socialBtn}
-                onPress={() => alert('Google sign-in is coming soon.')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.googleG}>G</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.socialBtn}
-                onPress={() => alert('Facebook sign-in is coming soon.')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="logo-facebook" size={19} color="#1877F2" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.socialBtn}
-                onPress={() => alert('Apple sign-in is coming soon.')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="logo-apple" size={20} color="#111" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading}
+              activeOpacity={0.75}
+            >
+              {googleLoading
+                ? <ActivityIndicator size="small" color="#444" />
+                : (
+                  <>
+                    <Text style={styles.googleG}>G</Text>
+                    <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  </>
+                )
+              }
+            </TouchableOpacity>
+
+            {/* Sign in with Apple — iOS only */}
+            {Platform.OS === 'ios' && AppleAuthentication?.AppleAuthenticationButton && (
+              <>
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  cornerRadius={13}
+                  style={styles.appleBtn}
+                  onPress={async () => {
+                    setAppleLoading(true);
+                    setError('');
+                    try {
+                      const credential = await AppleAuthentication.signInAsync({
+                        requestedScopes: [
+                          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                        ],
+                      });
+                      await signInWithApple(credential.identityToken, credential.fullName);
+                    } catch (e) {
+                      if (e.code !== 'ERR_REQUEST_CANCELED') {
+                        setError(e.message || 'Apple sign in failed.');
+                      }
+                    } finally {
+                      setAppleLoading(false);
+                    }
+                  }}
+                />
+                {appleLoading && <ActivityIndicator color="#0F172A" style={{ marginTop: 8 }} />}
+              </>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Privacy + Terms — visible before sign-up, required by Apple */}
+      <View style={styles.legalRow}>
+        <Text style={styles.legalText}>By continuing you agree to our </Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://cerebral.app/terms')}>
+          <Text style={styles.legalLink}>Terms</Text>
+        </TouchableOpacity>
+        <Text style={styles.legalText}> and </Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://cerebral.app/privacy')}>
+          <Text style={styles.legalLink}>Privacy Policy</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -346,14 +473,53 @@ const styles = StyleSheet.create({
   dividerLine:  { flex: 1, height: 1, backgroundColor: '#ECE8DC' },
   dividerLabel: { fontSize: 12, color: '#b0b8c1', fontWeight: '500' },
 
-  socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 14 },
-  socialBtn: {
-    width: 60, height: 48, borderRadius: 12,
-    backgroundColor: '#fff',
+  googleBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fff', borderRadius: 13, paddingVertical: 13,
+    marginBottom: 10, gap: 10,
     borderWidth: 1, borderColor: '#ECE8DC',
-    justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  googleG: { fontSize: 17, fontWeight: '800', color: '#EA4335' },
+  googleG:       { fontSize: 17, fontWeight: '800', color: '#EA4335' },
+  googleBtnText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
+
+  appleBtn: { width: '100%', height: 50, marginTop: 4 },
+
+  legalRow: {
+    position: 'absolute', bottom: 24, left: 0, right: 0,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap',
+    paddingHorizontal: 20,
+  },
+  legalText: { fontSize: 11, color: 'rgba(255,255,255,0.45)' },
+  legalLink: { fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: '600', textDecorationLine: 'underline' },
+});
+
+const fStyles = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24,
+  },
+  card: {
+    backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
+  },
+  title: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
+  sub:   { fontSize: 13, color: '#8c98a8', marginBottom: 20, lineHeight: 18 },
+  inputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#EFEBE0', borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 13, marginBottom: 10,
+  },
+  input:  { flex: 1, fontSize: 14, color: '#0F172A' },
+  error:  { color: '#EF4444', fontSize: 13, marginBottom: 10 },
+  btnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  cancelBtn:  { flex: 1, padding: 13, borderRadius: 10, borderWidth: 1, borderColor: '#ECE8DC', alignItems: 'center' },
+  cancelText: { fontSize: 15, color: '#666', fontWeight: '600' },
+  sendBtn:    { flex: 1, padding: 13, borderRadius: 10, backgroundColor: '#0F172A', alignItems: 'center' },
+  sendText:   { fontSize: 15, color: '#fff', fontWeight: '700' },
+  sentIcon:   { alignItems: 'center', marginBottom: 14 },
+  sentMsg:    { fontSize: 14, color: '#555', lineHeight: 20, textAlign: 'center', marginBottom: 20 },
+  doneBtn:    { backgroundColor: '#0F172A', borderRadius: 10, padding: 14, alignItems: 'center' },
+  doneBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

@@ -25,10 +25,13 @@ export const tokenStorage = {
 export const authClient = createAuthClient({
   baseURL: API_BASE,
   fetchOptions: {
-    // Attach stored bearer token to every auth client request (React Native has no cookies)
     onRequest: async (ctx) => {
       const token = await tokenStorage.get();
       if (token) ctx.headers.set('Authorization', `Bearer ${token}`);
+      // React Native doesn't send Origin automatically; Better Auth requires it for CSRF protection
+      if (!ctx.headers.get('Origin')) {
+        ctx.headers.set('Origin', API_BASE);
+      }
     },
   },
 });

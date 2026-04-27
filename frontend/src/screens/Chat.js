@@ -131,6 +131,10 @@ export default function Chat() {
         />
       </View>
 
+      <View style={styles.disclaimer}>
+        <Text style={styles.disclaimerText}>Cerebral provides financial awareness, not financial advice.</Text>
+      </View>
+
       <View style={[styles.inputRow, IS_WEB && styles.inputRowWeb]}>
         <View style={IS_WEB ? styles.inputInner : { flex: 1, flexDirection: 'row', gap: 8 }}>
           <TextInput
@@ -194,6 +198,16 @@ const styles = StyleSheet.create({
   bubbleText:      { fontSize: 15, color: '#0F172A', lineHeight: 21 },
   bubbleTextUser:  { color: '#fff' },
   typingBubble:    { paddingVertical: 12, paddingHorizontal: 16 },
+
+  disclaimer: {
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 16,
+    paddingTop: 6,
+  },
+  disclaimerText: {
+    fontSize: 10, color: 'rgba(255,255,255,0.3)',
+    textAlign: 'center', fontStyle: 'italic',
+  },
 
   inputRow: {
     flexDirection:   'row',

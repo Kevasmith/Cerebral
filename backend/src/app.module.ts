@@ -22,6 +22,7 @@ import { InsightsModule } from './modules/insights/insights.module';
 import { OpportunitiesModule } from './modules/opportunities/opportunities.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { HealthModule } from './modules/health/health.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { HealthModule } from './modules/health/health.module';
     OpportunitiesModule,
     ChatModule,
     HealthModule,
+    BillingModule,
   ],
   providers: [
     // Apply ThrottlerGuard globally; individual endpoints can override with @Throttle()

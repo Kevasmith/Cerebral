@@ -150,7 +150,44 @@ export class InsightEngineService {
       });
     }
 
-    // Rule 4: Income trend
+    // Rule 4: Positive — spending down meaningfully vs last month
+    if (previousTotal > 0 && currentTotal > 0) {
+      const pct = ((currentTotal - previousTotal) / previousTotal) * 100;
+      if (pct <= -10) {
+        triggers.push({
+          type: InsightType.SAVINGS_TIP,
+          aiType: 'savings_opportunity',
+          data: { category: 'overall', amount: Math.abs(currentTotal - previousTotal).toFixed(2) },
+          metadata: { rule: 'spending_down', month: now.getMonth() },
+        });
+      }
+    }
+
+    // Rule 5: Subscription detection — entertainment/bills appearing in both months
+    const recurringCategories = [TransactionCategory.ENTERTAINMENT, TransactionCategory.BILLS];
+    const subscriptionSpend = recurringCategories
+      .map((cat) => ({
+        category: cat,
+        current: currentSpend.find((r) => r.category === cat)?.total ?? 0,
+        previous: previousSpend.find((r) => r.category === cat)?.total ?? 0,
+      }))
+      .filter((s) => s.current > 0 && s.previous > 0);
+
+    if (subscriptionSpend.length > 0) {
+      const totalMonthly = subscriptionSpend.reduce((sum, s) => sum + s.current, 0);
+      triggers.push({
+        type: InsightType.SAVINGS_TIP,
+        aiType: 'savings_opportunity',
+        data: {
+          category: 'subscriptions',
+          amount: totalMonthly.toFixed(2),
+          subscriptions: subscriptionSpend.map((s) => s.category).join(', '),
+        },
+        metadata: { rule: 'subscription_detected', month: now.getMonth() },
+      });
+    }
+
+    // Rule 6: Income trend
     const incomeCurrentMonth = currentSpend.find((r) => r.category === TransactionCategory.INCOME)?.total ?? 0;
     const incomePrevMonth = previousSpend.find((r) => r.category === TransactionCategory.INCOME)?.total ?? 0;
     if (incomePrevMonth > 0 && incomeCurrentMonth > 0) {

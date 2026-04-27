@@ -304,6 +304,7 @@ export class TransactionsService {
   async getUserTransactions(
     userId: string,
     filters?: {
+      search?: string;
       category?: TransactionCategory;
       startDate?: Date;
       endDate?: Date;
@@ -315,6 +316,14 @@ export class TransactionsService {
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.account', 'account')
       .where('account.userId = :userId', { userId });
+
+    if (filters?.search) {
+      const term = `%${filters.search.toLowerCase()}%`;
+      query.andWhere(
+        '(LOWER(transaction.description) LIKE :term OR LOWER(transaction.merchantName) LIKE :term)',
+        { term },
+      );
+    }
 
     if (filters?.category) {
       query.andWhere('transaction.category = :category', {

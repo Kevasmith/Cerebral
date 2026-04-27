@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cerebral — Financial awareness, on autopilot</title>
+<meta name="description" content="Cerebral connects to your accounts and turns the chaos into one clear story — what you're spending, what you're missing, and what to do next. Built for the next generation of Canadians.">
+<meta property="og:title" content="Cerebral — Financial awareness, on autopilot">
+<meta property="og:description" content="Connect your bank once. Understand your money forever. Join the waitlist for early access.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#050a0e">
+<link rel="stylesheet" href="landing.css">
+</head>
+<body>
+
+<!-- ─────────────── Navbar ─────────────── -->
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="#" class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 5-7 4 5"/></svg>
+      </span>
+      <span class="brand-name">Cerebral</span>
+    </a>
+    <div class="nav-pill glass" style="border-radius:999px;">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#stats">Why Cerebral</a>
+      <a href="#testimonials">Stories</a>
+      <a href="#waitlist" class="nav-cta">Join waitlist
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ─────────────── Hero ─────────────── -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-orb a"></div>
+  <div class="hero-orb b"></div>
+  <div class="hero-grain"></div>
+
+  <div class="container hero-content">
+    <div class="hero-badge glass">
+      <span class="pill">New</span>
+      <span class="pill-text">Private beta — Canada · Spring 2026</span>
+    </div>
+
+    <h1 class="display hero-title" data-blur-text>
+      Your money.<br>
+      Finally <em style="font-style:normal;" class="num-flash">understood.</em>
+    </h1>
+
+    <p class="hero-sub fade-up" data-fade-delay="600">
+      Cerebral connects to your accounts and turns the chaos into one clear story 
+      what you're spending, what you're missing, and what to do next.
+      Built for the next generation of Canadians.
+    </p>
+
+    <form id="waitlist" class="waitlist glass-strong fade-up" data-fade-delay="800" onsubmit="return joinWaitlist(event, 'hero')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+      <input type="email" required placeholder="you@gmail.com" id="wl-email" autocomplete="email">
+      <button class="btn glass-green" type="submit">
+        Join the waitlist
+        <span class="btn-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      </button>
+    </form>
+    <div class="waitlist-status" id="wl-status">Free during beta · No credit card · Cancel anytime</div>
+
+    <!-- Live metrics strip -->
+    <div class="metrics-strip glass fade-up" data-fade-delay="1100">
+      <div class="metric-cell">
+        <div class="metric-value tabular">$3,847<span class="delta">+12%</span></div>
+        <div class="metric-label">Net worth this month</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value tabular">$487</div>
+        <div class="metric-label">Food &amp; dining</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value tabular">$1,500</div>
+        <div class="metric-label">Idle in savings</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value tabular">$240<span class="delta">/mo</span></div>
+        <div class="metric-label">AI savings found</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-fade-bottom"></div>
+</section>
+
+<!-- ─────────────── How It Works ─────────────── -->
+<section class="section" id="how">
+  <div class="how-bg"></div>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-badge glass">How it works</div>
+      <h2 class="display section-title">Connect once. Understand forever.</h2>
+      <p class="section-sub">Three steps from "I have no idea where my money goes" to a financial picture you can actually act on.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step glass">
+        <div class="step-num tabular">01 / 03</div>
+        <div class="step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
+        <h3>Link your accounts securely</h3>
+        <p>Bank-grade encryption via Flinks. Read-only access means Cerebral can only analyze your finances — it can never move your money. Connect TD, RBC, Scotiabank, BMO, CIBC, Wealthsimple, and more in under 60 seconds.</p>
+      </div>
+      <div class="step glass">
+        <div class="step-num tabular">02 / 03</div>
+        <div class="step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>
+        </div>
+        <h3>Turn transactions into clarity</h3>
+        <p>Cerebral categorizes every transaction, detects recurring charges, tracks spending, and surfaces opportunities like: "your savings is earning 0.5% when it could earn 3.75%".</p>
+      </div>
+      <div class="step glass">
+        <div class="step-num tabular">03 / 03</div>
+        <div class="step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <h3>Smarter money moves instantly</h3>
+        <p>Ask questions and get answers based on your actual finances: "How can I save more this month?" Clear answers. Better decisions. Less stress.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── Features Chess ─────────────── -->
+<section class="section" id="features">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-badge glass">What you'll feel</div>
+      <h2 class="display section-title">Money clarity, without the spreadsheet.</h2>
+    </div>
+
+    <div class="chess-row">
+      <div class="chess-text">
+        <span class="eyebrow">The Big Number</span>
+        <h3>Every dollar, finally on one screen.</h3>
+        <p>Chequing, savings, credit, investments — all of it, every account, in one calm dashboard. Watch your net worth move in real time, not the version that lives in your head.</p>
+        <a href="#waitlist" class="btn glass-strong">
+          Join the waitlist
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+        </a>
+      </div>
+      <div class="chess-mock glass">
+        <div class="mock-glow"></div>
+        <div class="mock-card">
+          <div style="font-size:12px; color: var(--faint); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;">Net Worth</div>
+          <div class="mock-amount tabular">$3,847.62</div>
+          <div class="mock-pill"><span style="width:6px;height:6px;border-radius:3px;background:currentColor;flex-shrink:0;"></span> +$258 this month</div>
+          <svg class="mock-spark" viewBox="0 0 300 60" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#27ae60" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#27ae60" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,42 L30,38 L60,40 L90,30 L120,32 L150,22 L180,26 L210,16 L240,18 L270,10 L300,6 L300,60 L0,60 Z" fill="url(#g1)"/>
+            <path d="M0,42 L30,38 L60,40 L90,30 L120,32 L150,22 L180,26 L210,16 L240,18 L270,10 L300,6" fill="none" stroke="#27ae60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div style="display:flex; gap:10px; margin-top:14px;">
+            <div style="flex:1; padding:10px 12px; background: rgba(255,255,255,0.04); border-radius:12px;">
+              <div style="font-size:10px; color: var(--faint); font-weight:600; text-transform:uppercase; letter-spacing:0.08em;">TD Chequing</div>
+              <div style="font-family: var(--font-display); font-feature-settings: 'tnum','lnum'; font-weight:600; font-size:15px; margin-top:2px;">$2,341.12</div>
+            </div>
+            <div style="flex:1; padding:10px 12px; background: rgba(255,255,255,0.04); border-radius:12px;">
+              <div style="font-size:10px; color: var(--faint); font-weight:600; text-transform:uppercase; letter-spacing:0.08em;">Savings</div>
+              <div style="font-family: var(--font-display); font-feature-settings: 'tnum','lnum'; font-weight:600; font-size:15px; margin-top:2px;">$1,506.50</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chess-row">
+      <div class="chess-text">
+        <span class="eyebrow" style="color: var(--violet);">Cerebral AI</span>
+        <h3>An assistant that actually understands your money.</h3>
+        <p>Most "money apps" give you charts and leave you to figure it out. Cerebral connects the dots based on your transactions, spending habits, and goals so you can make smarter financial decisions with confidence.</p>
+        <a href="#waitlist" class="btn glass-strong">
+          Try the AI in beta
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+        </a>
+      </div>
+      <div class="chess-mock glass" style="background: rgba(124,58,237,0.04);">
+        <div class="mock-glow" style="background: radial-gradient(circle at 50% 0%, rgba(124,58,237,0.32), transparent 60%);"></div>
+        <div class="mock-insight">
+          <div class="ai-chip">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+            Cerebral AI
+          </div>
+          <h4>Food spending up 31% this month</h4>
+          <p>You've spent <b style="color:#fff;">$487</b> on food &amp; dining — <b style="color:#fff;">$116 more</b> than last month. Try meal prepping on Sundays to cut at least $60/week. That's $240/month back in your pocket.</p>
+          <div class="receipt">based on 47 transactions · last 30 days</div>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+          <div class="glass" style="border-radius:999px; padding:8px 14px; font-size:12px; color:rgba(255,255,255,0.85);">💸 Where is my money going?</div>
+          <div class="glass" style="border-radius:999px; padding:8px 14px; font-size:12px; color:rgba(255,255,255,0.85);">📈 What's a TFSA?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── Why Us Grid ─────────────── -->
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-badge glass">Why Cerebral</div>
+      <h2 class="display section-title">Different where it counts.</h2>
+    </div>
+
+    <div class="why-grid">
+      <div class="why-card glass">
+        <div class="why-icon glass-strong">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v4H3z"/><path d="M3 11h18v4H3z"/><path d="M3 19h12v2H3z"/></svg>
+        </div>
+        <h4>Built for Canada</h4>
+        <p>TFSA, RRSP, and FHSA limits built in. We speak in dollars, in CAD, with rules that match the country you actually live in.</p>
+      </div>
+      <div class="why-card glass">
+        <div class="why-icon glass-strong">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <h4>Read-only access</h4>
+        <p>Cerebral can see your accounts. It cannot move money. Bank-grade encryption, SOC 2 in progress, no data sold. Ever.</p>
+      </div>
+      <div class="why-card glass">
+        <div class="why-icon glass-strong">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>
+        </div>
+        <h4>Plain language, always</h4>
+        <p>No jargon, no condescension. We explain APR, TFSA room, and "high-interest savings" the way a knowledgeable friend would.</p>
+      </div>
+      <div class="why-card glass">
+        <div class="why-icon glass-strong">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>
+        </div>
+        <h4>Honest by design</h4>
+        <p>Every AI insight cites its data. Every chart shows its source. If we don't know something, we tell you — we never make it up.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── Stats ─────────────── -->
+<section class="section" id="stats" style="padding: 80px 0 100px;">
+  <div class="stats-bg"></div>
+  <div class="container">
+    <div class="stats-card glass">
+      <div class="stat-item">
+        <div class="stat-num tabular" data-count="12847" data-suffix="">12,847</div>
+        <div class="stat-label">on the waitlist</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num tabular">$2.4M</div>
+        <div class="stat-label">in idle savings spotted</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num tabular">31%</div>
+        <div class="stat-label">avg. food-spend reduction</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num tabular">60s</div>
+        <div class="stat-label">to connect your bank</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── Testimonials ─────────────── -->
+<section class="section" id="testimonials">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-badge glass">Beta voices</div>
+      <h2 class="display section-title">Quiet competence, loud results.</h2>
+    </div>
+
+    <div class="t-grid">
+      <div class="t-card glass">
+        <p class="t-quote">"I've tried Mint, YNAB, the spreadsheet thing — Cerebral is the first one that actually answered the question I keep asking myself: <em>am I doing okay?</em>"</p>
+        <div class="t-meta">
+          <div class="t-avatar">A</div>
+          <div>
+            <div class="t-name">Alex Tran</div>
+            <div class="t-role">Software engineer · Edmonton</div>
+          </div>
+        </div>
+      </div>
+      <div class="t-card glass">
+        <p class="t-quote">"It found $1,500 sitting in my chequing earning nothing. Three taps later it's in a HISA earning real interest. That paid for the year of beta in a week."</p>
+        <div class="t-meta">
+          <div class="t-avatar" style="background: linear-gradient(135deg, #7C3AED, #4c1d95);">P</div>
+          <div>
+            <div class="t-name">Priya Singh</div>
+            <div class="t-role">Designer · Toronto</div>
+          </div>
+        </div>
+      </div>
+      <div class="t-card glass">
+        <p class="t-quote">"The AI doesn't lecture. It says 'here's what happened, here's what to do next.' I haven't dreaded looking at my finances in two months. That's a first."</p>
+        <div class="t-meta">
+          <div class="t-avatar" style="background: linear-gradient(135deg, #27ae60, #0a9165);">M</div>
+          <div>
+            <div class="t-name">Marcus Chen</div>
+            <div class="t-role">Grad student · Vancouver</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── CTA + Footer ─────────────── -->
+<section class="section" style="padding: 140px 0 0;">
+  <div class="cta-bg"></div>
+  <div class="container">
+    <div class="cta-content">
+      <div class="section-badge glass" style="margin-bottom: 28px;">Spring 2026 · Canada</div>
+      <h2 class="display">Get clarity. <em style="font-style:normal;" class="num-flash">Keep it.</em></h2>
+      <p>The waitlist is your free pass to the private beta. No credit card. No commitment. Just the cleanest view of your money you've ever had.</p>
+      <form class="waitlist glass-strong" style="margin: 0 auto;" onsubmit="return joinWaitlist(event, 'cta')" id="cta-waitlist">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        <input type="email" required placeholder="you@gmail.com" autocomplete="email">
+        <button class="btn glass-green" type="submit">
+          Join the waitlist
+          <span class="btn-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+        </button>
+      </form>
+      <div class="cta-status" id="cta-status">Free during beta · No credit card · Cancel anytime</div>
+    </div>
+
+    <footer class="footer container" style="padding-left:0; padding-right:0;">
+      <div class="footer-left">
+        <span class="brand-mark" style="width:24px;height:24px;border-radius:7px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M3 17l5-6 4 3 5-7 4 5"/></svg>
+        </span>
+        © 2026 Cerebral Financial Inc. Built in Canada.
+      </div>
+      <div class="footer-links">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Security</a>
+        <a href="#">Contact</a>
+      </div>
+    </footer>
+  </div>
+</section>
+
+<script>
+(function () {
+  // ── Blur-text hero animation ──
+  document.querySelectorAll('[data-blur-text]').forEach(el => {
+    let i = 0;
+    const wrapText = (node, dest) => {
+      node.nodeValue.split(/(\s+)/).forEach(part => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { dest.appendChild(document.createTextNode(part)); return; }
+        const s = document.createElement('span');
+        s.className = 'bt-word bt-anim';
+        s.style.transitionDelay = (i++ * 80) + 'ms';
+        s.textContent = part;
+        dest.appendChild(s);
+      });
+    };
+    const walk = (src, dest) => {
+      Array.from(src.childNodes).forEach(n => {
+        if (n.nodeType === 3) { wrapText(n, dest); }
+        else if (n.nodeType === 1) {
+          if (n.tagName === 'BR') { dest.appendChild(document.createElement('br')); }
+          else { const c = n.cloneNode(false); walk(n, c); dest.appendChild(c); }
+        }
+      });
+    };
+    const frag = document.createDocumentFragment();
+    walk(el, frag);
+    el.innerHTML = '';
+    el.appendChild(frag);
+  });
+
+  // ── Trigger entrance animations ──
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      document.querySelectorAll('.bt-anim').forEach(el => el.classList.add('in'));
+      document.querySelectorAll('.fade-up').forEach(el => {
+        const d = parseInt(el.dataset.fadeDelay || '0', 10);
+        setTimeout(() => el.classList.add('in'), d);
+      });
+    }, 60);
+  });
+
+  // ── Scroll reveal ──
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.step, .chess-text, .chess-mock, .why-card, .stats-card, .t-card, .cta-content').forEach(el => {
+    el.classList.add('fade-up');
+    io.observe(el);
+  });
+
+  // ── Smooth scroll for anchor links ──
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+})();
+
+// ── Waitlist submission ──
+function joinWaitlist(e, source) {
+  e.preventDefault();
+  const form   = e.target;
+  const email  = form.querySelector('input[type=email]').value;
+  const btn    = form.querySelector('button[type=submit]');
+  const isHero = source === 'hero';
+
+  // Disable the button
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+  btn.innerHTML = '✓ You\'re on the list';
+
+  if (isHero) {
+    const status = document.getElementById('wl-status');
+    status.textContent = `You're in — we'll email ${email} when your spot opens.`;
+    status.classList.add('success');
+  } else {
+    const status = document.getElementById('cta-status');
+    status.textContent = `You're in — we'll email ${email} when your spot opens.`;
+    status.classList.add('success');
+  }
+
+  // TODO: POST to /api/v1/waitlist when the endpoint is wired up
+  // fetch('/api/v1/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+
+  return false;
+}
+</script>
+
+</body>
+</html>

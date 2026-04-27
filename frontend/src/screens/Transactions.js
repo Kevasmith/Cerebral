@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
-  ScrollView, RefreshControl, ActivityIndicator, Platform,
+  ScrollView, RefreshControl, ActivityIndicator, Platform, TextInput,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import Skeleton from '../components/Skeleton';
@@ -61,16 +62,19 @@ export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [error, setError] = useState(null);
   const [category, setCategory] = useState('all');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const isFetching = useRef(false);
+  const searchTimer = useRef(null);
 
-  const fetchPage = useCallback(async (cat, pageNum, append = false) => {
+  const fetchPage = useCallback(async (cat, pageNum, append = false, searchTerm = '') => {
     if (isFetching.current) return;
     isFetching.current = true;
     try {
       const params = { limit: LIMIT, offset: pageNum * LIMIT };
       if (cat !== 'all') params.category = cat;
+      if (searchTerm.trim()) params.search = searchTerm.trim();
       const res = await api.get('/transactions', { params });
       const data = res.data ?? {};
       const items = Array.isArray(data) ? data : (data.transactions ?? []);
@@ -85,7 +89,14 @@ export default function Transactions() {
     } catch (e) {
       if (!append) {
         setError('Could not load transactions. Showing recent activity.');
-        const filtered = cat === 'all' ? MOCK_TRANSACTIONS : MOCK_TRANSACTIONS.filter(t => t.category === cat);
+        let filtered = cat === 'all' ? MOCK_TRANSACTIONS : MOCK_TRANSACTIONS.filter(t => t.category === cat);
+        if (searchTerm.trim()) {
+          const term = searchTerm.trim().toLowerCase();
+          filtered = filtered.filter(t =>
+            (t.description || '').toLowerCase().includes(term) ||
+            (t.merchantName || '').toLowerCase().includes(term)
+          );
+        }
         setTransactions(filtered);
         setHasMore(false);
       }
@@ -102,14 +113,26 @@ export default function Transactions() {
     setPage(0);
     setHasMore(true);
     setLoading(true);
-    fetchPage(category, 0, false);
+    fetchPage(category, 0, false, search);
   }, [category]);
+
+  const handleSearchChange = (text) => {
+    setSearch(text);
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setTransactions([]);
+      setPage(0);
+      setHasMore(true);
+      setLoading(true);
+      fetchPage(category, 0, false, text);
+    }, 350);
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
     setPage(0);
     setHasMore(true);
-    fetchPage(category, 0, false);
+    fetchPage(category, 0, false, search);
   };
 
   const loadMore = () => {
@@ -117,7 +140,7 @@ export default function Transactions() {
     const nextPage = page + 1;
     setPage(nextPage);
     setLoadingMore(true);
-    fetchPage(category, nextPage, true);
+    fetchPage(category, nextPage, true, search);
   };
 
   if (loading) {
@@ -158,7 +181,23 @@ export default function Transactions() {
         <Text style={styles.subheading}>Your spending history</Text>
       </View>
       <View style={styles.contentArea}>
-        <View style={{ height: 56 }}>
+        <View style={styles.searchRow}>
+          <Ionicons name="search-outline" size={16} color="#aaa" style={{ marginRight: 8 }} />
+          <TextInput
+            style={[styles.searchInput, IS_WEB && { outlineStyle: 'none' }]}
+            placeholder="Search transactions..."
+            value={search}
+            onChangeText={handleSearchChange}
+            placeholderTextColor="#bbb"
+            autoCapitalize="none"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => handleSearchChange('')}>
+              <Ionicons name="close-circle" size={16} color="#bbb" />
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={{ height: 52 }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8, alignItems: 'center' }}>
             {CATEGORIES.map((c) => (
               <TouchableOpacity
@@ -203,6 +242,13 @@ const styles = StyleSheet.create({
   meta:        { color: '#999', marginTop: 3, fontSize: 12 },
   amount:      { fontSize: 15, fontWeight: '700' },
   sep:         { height: 1, backgroundColor: '#ECE8DC', marginLeft: 16 },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F0EEE6', borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10,
+    marginHorizontal: 12, marginTop: 12, marginBottom: 4,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: '#0F172A' },
   catBtn:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F0EEE6', marginHorizontal: 4 },
   catBtnActive:  { backgroundColor: '#0F172A' },
   catText:       { color: '#555', textTransform: 'capitalize', fontSize: 13, fontWeight: '600' },

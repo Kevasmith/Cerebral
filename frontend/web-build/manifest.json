@@ -1,0 +1,22 @@
+{
+  "background_color": "#f8f9fa",
+  "display": "standalone",
+  "lang": "en",
+  "name": "Cerebral",
+  "short_name": "Cerebral",
+  "start_url": "/?utm_source=web_app_manifest",
+  "theme_color": "#1a1a2e",
+  "orientation": "portrait",
+  "related_applications": [
+    {
+      "platform": "itunes",
+      "id": "com.cerebral.app"
+    },
+    {
+      "platform": "play",
+      "url": "http://play.google.com/store/apps/details?id=com.cerebral.app",
+      "id": "com.cerebral.app"
+    }
+  ],
+  "prefer_related_applications": true
+}

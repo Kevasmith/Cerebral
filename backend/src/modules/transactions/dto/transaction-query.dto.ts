@@ -1,8 +1,13 @@
-import { IsDateString, IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TransactionCategory } from '../../../entities/transaction.entity';
 
 export class TransactionQueryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
   @IsOptional()
   @IsEnum(TransactionCategory)
   category?: TransactionCategory;
