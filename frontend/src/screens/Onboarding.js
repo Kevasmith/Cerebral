@@ -4,8 +4,14 @@ import {
   ScrollView, ActivityIndicator, SafeAreaView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
+
+const IS_WEB = Platform.OS === 'web';
+const WEB_GRADIENT = IS_WEB
+  ? { backgroundImage: 'linear-gradient(145deg, #0F172A 0%, #0b2018 40%, #085c3a 75%, #0a9165 100%)' }
+  : {};
 
 // WebView is native-only — lazy load so the web bundle doesn't crash
 const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
@@ -26,6 +32,23 @@ const INTERESTS = [
   { key: 'saving', label: 'Saving', emoji: '💡' },
 ];
 
+const BANK_TILES = [
+  { label: 'TD Bank',      mark: 'TD', color: '#1A6137', txt: '#fff' },
+  { label: 'RBC',          mark: 'RBC', color: '#005DAA', txt: '#fff' },
+  { label: 'Scotiabank',   mark: 'S',  color: '#EC1C24', txt: '#fff' },
+  { label: 'BMO',          mark: 'B',  color: '#0277BD', txt: '#fff' },
+  { label: 'CIBC',         mark: 'C',  color: '#C41230', txt: '#fff' },
+  { label: 'National Bank',mark: 'NB', color: '#E2001A', txt: '#fff' },
+];
+
+const FILTER_CHIPS = [
+  ['flash-outline',    'Recently used'],
+  ['business-outline', 'Business'],
+  ['trending-up-outline', 'Brokerage'],
+  ['card-outline',     'Credit card'],
+  ['cash-outline',     'Crypto'],
+];
+
 // ─── Step 0: Connect Bank ─────────────────────────────────────────────────────
 
 function ConnectBankStep({ onConnected, onSkip }) {
@@ -37,6 +60,7 @@ function ConnectBankStep({ onConnected, onSkip }) {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState('');
   const webViewRef = useRef(null);
+  const insets = useSafeAreaInsets();
 
   const openFlinks = useCallback(async () => {
     setError('');
@@ -54,13 +78,9 @@ function ConnectBankStep({ onConnected, onSkip }) {
 
   const handleNavigationChange = useCallback(async (navState) => {
     if (!navState.url.startsWith(FLINKS_REDIRECT)) return;
-
-    // Intercept the redirect — extract loginId from query params
     const urlObj = new URL(navState.url);
     const loginId = urlObj.searchParams.get('loginId');
     if (!loginId) return;
-
-    // Set syncing BEFORE closing WebView so there's no blank-screen gap
     setSyncing(true);
     setShowWebView(false);
     setError('');
@@ -120,55 +140,134 @@ function ConnectBankStep({ onConnected, onSkip }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.bankIllustration}>
-        <Ionicons name="shield-checkmark" size={56} color="#0F172A" />
-      </View>
-
-      <Text style={styles.heading}>Connect your bank</Text>
-      <Text style={styles.sub}>
-        Link your account to unlock spending insights, personalized opportunities, and your AI financial assistant.
-      </Text>
-
-      {connected ? (
-        <View style={styles.successCard}>
-          <Ionicons name="checkmark-circle" size={24} color="#0a9165" />
-          <Text style={styles.successText}>Bank connected successfully!</Text>
+    <ScrollView
+      style={styles.bankContainer}
+      contentContainerStyle={{ paddingBottom: 32 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Dark hero header */}
+      <View style={[styles.bankHero, WEB_GRADIENT, { paddingTop: insets.top + 10 }]}>
+        <View style={styles.bankHeroNav}>
+          <View style={{ width: 34 }} />
+          <Text style={styles.bankStep}>Step 1 of 3</Text>
+          <View style={{ width: 34 }} />
         </View>
-      ) : null}
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <View style={styles.trustRow}>
-        {['256-bit encryption', 'Read-only access', 'Canada-first'].map((t) => (
-          <View key={t} style={styles.trustChip}>
-            <Ionicons name="lock-closed" size={11} color="#555" />
-            <Text style={styles.trustText}>{t}</Text>
-          </View>
-        ))}
+        <View style={styles.bankEncryptBadge}>
+          <Ionicons name="shield-checkmark" size={13} color="#6ffbbe" />
+          <Text style={styles.bankEncryptText}>256-bit encryption</Text>
+        </View>
+        <Text style={styles.bankHeroTitle}>Connect your wealth</Text>
+        <Text style={styles.bankHeroSub}>End-to-end encrypted. We never store your credentials.</Text>
       </View>
 
-      {connected ? (
-        <TouchableOpacity style={styles.btn} onPress={onConnected}>
-          <Text style={styles.btnText}>Continue</Text>
-        </TouchableOpacity>
-      ) : (
-        <>
-          <TouchableOpacity
-            style={[styles.btn, urlLoading && styles.btnDisabled]}
-            onPress={openFlinks}
-            disabled={urlLoading}
-          >
-            {urlLoading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Connect Bank</Text>
-            }
+      {/* Cream content area */}
+      <View style={styles.bankContent}>
+        {/* Success / error banners */}
+        {connected && (
+          <View style={styles.successCard}>
+            <Ionicons name="checkmark-circle" size={24} color="#0a9165" />
+            <Text style={styles.successText}>Bank connected successfully!</Text>
+          </View>
+        )}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {/* Search bar */}
+        <View style={styles.bankSearchBar}>
+          <Ionicons name="search-outline" size={18} color="#9aa3b2" />
+          <Text style={styles.bankSearchPlaceholder}>Search 12,000+ institutions</Text>
+          <View style={styles.bankSearchKbd}>
+            <Text style={styles.bankSearchKbdText}>⌘K</Text>
+          </View>
+        </View>
+
+        {/* Filter chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterChips}
+        >
+          {FILTER_CHIPS.map(([icon, label]) => (
+            <View key={label} style={styles.filterChip}>
+              <Ionicons name={icon} size={13} color="#0a9165" />
+              <Text style={styles.filterChipText}>{label}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* Popular institutions header */}
+        <View style={styles.bankSectionHeader}>
+          <Text style={styles.bankSectionTitle}>Popular institutions</Text>
+          <Text style={styles.bankSectionLink}>View all →</Text>
+        </View>
+
+        {/* Bank tile grid */}
+        <View style={styles.bankGrid}>
+          {BANK_TILES.map((bank) => (
+            <TouchableOpacity
+              key={bank.label}
+              style={styles.bankTile}
+              onPress={openFlinks}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.bankMark, { backgroundColor: bank.color }]}>
+                <Text style={[styles.bankMarkText, { color: bank.txt }]}>{bank.mark}</Text>
+              </View>
+              <Text style={styles.bankTileLabel}>{bank.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Trust panel */}
+        <View style={styles.trustPanel}>
+          <View style={styles.trustPanelRow}>
+            <View style={[styles.trustPanelIcon, { backgroundColor: 'rgba(10,145,101,0.1)' }]}>
+              <Ionicons name="flash-outline" size={18} color="#0a9165" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.trustPanelTitle}>Instant sync</Text>
+              <Text style={styles.trustPanelBody}>Balances and transactions update in real time once connected.</Text>
+            </View>
+          </View>
+          <View style={[styles.trustPanelRow, { borderBottomWidth: 0 }]}>
+            <View style={[styles.trustPanelIcon, { backgroundColor: 'rgba(124,58,237,0.1)' }]}>
+              <Ionicons name="eye-off-outline" size={18} color="#7C3AED" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.trustPanelTitle}>Read-only access</Text>
+              <Text style={styles.trustPanelBody}>Cerebral cannot move funds without your explicit consent.</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Privacy footer */}
+        <View style={styles.privacyFooter}>
+          <Ionicons name="lock-closed-outline" size={12} color="#9aa3b2" />
+          <Text style={styles.privacyText}>Powered by Flinks · SOC 2 Type II · Canada-first</Text>
+        </View>
+
+        {/* CTA */}
+        {connected ? (
+          <TouchableOpacity style={[styles.btn, styles.bankBtn]} onPress={onConnected}>
+            <Text style={styles.btnText}>Continue →</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onSkip} style={styles.skipBtn}>
-            <Text style={styles.skipText}>Skip for now</Text>
-          </TouchableOpacity>
-        </>
-      )}
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.btn, styles.bankBtn, urlLoading && styles.btnDisabled]}
+              onPress={openFlinks}
+              disabled={urlLoading}
+            >
+              {urlLoading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.btnText}>Connect Bank</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onSkip} style={styles.skipBtn}>
+              <Text style={styles.skipText}>Skip for now</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -188,6 +287,7 @@ function GoalStep({ onNext }) {
             style={[styles.card, goal === g.key && styles.cardSelected]}
             onPress={() => setGoal(g.key)}
           >
+            {goal === g.key && <View style={styles.checkChip}><Text style={styles.checkMark}>✓</Text></View>}
             <Text style={styles.cardEmoji}>{g.emoji}</Text>
             <Text style={[styles.cardLabel, goal === g.key && styles.cardLabelSelected]}>{g.label}</Text>
             <Text style={styles.cardDesc}>{g.desc}</Text>
@@ -244,6 +344,7 @@ function InterestsStep({ goal, onFinish }) {
               style={[styles.chip, active && styles.chipActive]}
               onPress={() => toggleInterest(i.key)}
             >
+              {active && <View style={styles.checkChip}><Text style={styles.checkMark}>✓</Text></View>}
               <Text style={styles.chipEmoji}>{i.emoji}</Text>
               <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{i.label}</Text>
             </TouchableOpacity>
@@ -284,20 +385,96 @@ export default function Onboarding() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, backgroundColor: '#F8FAFC', justifyContent: 'center' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 24 },
+  container: { flexGrow: 1, padding: 24, backgroundColor: '#F4F2EC', justifyContent: 'center' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F4F2EC', padding: 24 },
 
-  // Bank step
-  bankIllustration: { alignItems: 'center', marginBottom: 24 },
-  trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
-  trustChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#e8e8e8', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
-  trustText: { fontSize: 11, color: '#555', fontWeight: '500' },
+  // Bank step — redesigned
+  bankContainer: { flex: 1, backgroundColor: '#0F172A' },
+  bankHero: {
+    paddingHorizontal: 20, paddingBottom: 32, backgroundColor: '#0F172A',
+  },
+  bankHeroNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  bankStep:    { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  bankEncryptBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    paddingHorizontal: 11, paddingVertical: 5,
+    backgroundColor: 'rgba(10,145,101,0.18)', borderWidth: 1, borderColor: 'rgba(10,145,101,0.35)',
+    borderRadius: 20, marginBottom: 14,
+  },
+  bankEncryptText: { fontSize: 10, fontWeight: '800', color: '#6ffbbe', textTransform: 'uppercase', letterSpacing: 1 },
+  bankHeroTitle: { fontSize: 28, fontWeight: '700', color: '#fff', letterSpacing: -0.6, lineHeight: 34, marginBottom: 6 },
+  bankHeroSub:   { fontSize: 13.5, color: 'rgba(255,255,255,0.65)', lineHeight: 20 },
+
+  bankContent: {
+    backgroundColor: '#F4F2EC', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    marginTop: -18, paddingTop: 18, paddingHorizontal: 16,
+  },
+
+  // Search bar
+  bankSearchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: '#FBF9F4', borderRadius: 14, borderWidth: 1, borderColor: '#ECE8DC',
+    shadowColor: '#0F172A', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+    marginBottom: 12,
+  },
+  bankSearchPlaceholder: { flex: 1, fontSize: 14, color: '#9aa3b2' },
+  bankSearchKbd:         { backgroundColor: '#F7F4EC', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: '#ECE8DC' },
+  bankSearchKbdText:     { fontSize: 10.5, fontWeight: '700', color: '#888' },
+
+  // Filter chips
+  filterChips: { gap: 8, paddingBottom: 14 },
+  filterChip:  {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7,
+    backgroundColor: '#FBF9F4', borderRadius: 20, borderWidth: 1, borderColor: '#ECE8DC',
+  },
+  filterChipText: { fontSize: 12, fontWeight: '600', color: '#0F172A' },
+
+  // Institution section
+  bankSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  bankSectionTitle:  { fontSize: 15, fontWeight: '700', color: '#0F172A', letterSpacing: -0.3 },
+  bankSectionLink:   { fontSize: 11.5, fontWeight: '700', color: '#0a9165' },
+
+  // Bank tile grid — 3 columns
+  bankGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 },
+  bankTile: {
+    width: '30.5%', backgroundColor: '#FBF9F4', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#ECE8DC', alignItems: 'center', gap: 8,
+    shadowColor: '#0F172A', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+  },
+  bankMark: {
+    width: 46, height: 46, borderRadius: 23,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  bankMarkText:  { fontSize: 14, fontWeight: '800', letterSpacing: -0.3 },
+  bankTileLabel: { fontSize: 11.5, fontWeight: '600', color: '#0F172A', textAlign: 'center', lineHeight: 15 },
+
+  // Trust panel
+  trustPanel: {
+    backgroundColor: '#FBF9F4', borderRadius: 18, borderWidth: 1, borderColor: '#ECE8DC',
+    overflow: 'hidden', marginBottom: 14,
+    shadowColor: '#0F172A', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+  },
+  trustPanelRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14,
+    borderBottomWidth: 1, borderBottomColor: '#ECE8DC',
+  },
+  trustPanelIcon:  { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  trustPanelTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', letterSpacing: -0.2, marginBottom: 2 },
+  trustPanelBody:  { fontSize: 12, color: '#888', lineHeight: 17 },
+
+  // Privacy footer
+  privacyFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 20 },
+  privacyText:   { fontSize: 11, color: '#9aa3b2' },
+
+  // Old shared styles kept for success/error
   successCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eafaf1', borderRadius: 12, padding: 14, marginBottom: 16 },
   successText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
-  skipBtn: { alignItems: 'center', marginTop: 16 },
-  skipText: { color: '#888', fontSize: 14 },
+  skipBtn:     { alignItems: 'center', marginTop: 16 },
+  skipText:    { color: '#888', fontSize: 14 },
   syncingText: { fontSize: 17, fontWeight: '700', color: '#0F172A', marginTop: 20 },
-  syncingSub: { fontSize: 14, color: '#888', marginTop: 6 },
+  syncingSub:  { fontSize: 14, color: '#888', marginTop: 6 },
 
   // WebView
   webViewContainer: { flex: 1, backgroundColor: '#fff' },
@@ -311,24 +488,29 @@ const styles = StyleSheet.create({
   heading: { fontSize: 26, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
   sub: { fontSize: 15, color: '#666', marginBottom: 28 },
   btn: { backgroundColor: '#0F172A', borderRadius: 12, padding: 16, alignItems: 'center' },
+  bankBtn: { marginBottom: 0 },
   btnDisabled: { backgroundColor: '#ccc' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   error: { color: '#EF4444', marginBottom: 12, fontSize: 13 },
 
   // Goal step
   options: { gap: 12, marginBottom: 32 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, borderWidth: 2, borderColor: '#e0e0e0' },
-  cardSelected: { borderColor: '#0F172A', backgroundColor: '#f0f0ff' },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, borderWidth: 2, borderColor: '#e0e0e0', position: 'relative' },
+  cardSelected: { borderColor: '#0a9165', backgroundColor: 'rgba(10,145,101,0.08)' },
   cardEmoji: { fontSize: 28, marginBottom: 6 },
   cardLabel: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
-  cardLabelSelected: { color: '#0F172A' },
+  cardLabelSelected: { color: '#07673f' },
   cardDesc: { fontSize: 13, color: '#888', marginTop: 4 },
+
+  // Check chip (absolute top-right on selected cards)
+  checkChip: { position: 'absolute', top: 12, right: 12, width: 20, height: 20, borderRadius: 10, backgroundColor: '#0a9165', justifyContent: 'center', alignItems: 'center', zIndex: 1 },
+  checkMark: { color: '#fff', fontSize: 11, fontWeight: '700', lineHeight: 14 },
 
   // Interests step
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 32 },
-  chip: { width: '47%', backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', borderWidth: 2, borderColor: '#e0e0e0' },
-  chipActive: { borderColor: '#0F172A', backgroundColor: '#f0f0ff' },
+  chip: { width: '47%', backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', borderWidth: 2, borderColor: '#e0e0e0', position: 'relative' },
+  chipActive: { borderColor: '#0a9165', backgroundColor: 'rgba(10,145,101,0.08)' },
   chipEmoji: { fontSize: 26, marginBottom: 6 },
   chipLabel: { fontSize: 14, fontWeight: '600', color: '#555' },
-  chipLabelActive: { color: '#0F172A' },
+  chipLabelActive: { color: '#07673f' },
 });

@@ -263,8 +263,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     marginBottom: 14,
   },
-  avatarText:  { color: '#fff', fontSize: 30, fontWeight: '800' },
-  displayName: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  avatarText:  { color: '#fff', fontSize: 30, fontWeight: '800', ...(IS_WEB && { fontFamily: 'Geist' }) },
+  displayName: { fontSize: 20, fontWeight: '700', color: '#fff', ...(IS_WEB && { fontFamily: 'Geist' }) },
   email:       { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 4 },
   planBadge: {
     marginTop: 10, paddingHorizontal: 14, paddingVertical: 4,

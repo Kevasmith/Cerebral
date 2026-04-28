@@ -38,7 +38,37 @@ function TransactionSkeleton() {
 const skeletonRow = { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#ECE8DC' };
 
 const CATEGORIES = ['all', 'food', 'transport', 'entertainment', 'shopping', 'bills', 'health', 'travel', 'income', 'transfer', 'other'];
+const PERIODS = ['Week', 'Month', 'Quarter', 'YTD', 'Custom'];
 const LIMIT = 20;
+
+function BehavioralInsight() {
+  return (
+    <View style={styles.aiCard}>
+      <View style={styles.aiHeader}>
+        <View style={styles.aiChip}>
+          <Ionicons name="sparkles" size={11} color="#7C3AED" />
+          <Text style={styles.aiChipText}>Cerebral Intelligence</Text>
+        </View>
+      </View>
+      <Text style={[styles.aiTitle, IS_WEB && { fontFamily: 'Geist' }]}>
+        Dining out is up <Text style={{ color: '#EF4444' }}>15%</Text> this week vs your baseline.
+      </Text>
+      <Text style={styles.aiBody}>
+        Weekly food spend: $828 (avg $720). Slightly off your "Aggressive Savings" goal.
+      </Text>
+      <View style={styles.aiAction}>
+        <Text style={styles.aiActionLabel}>Recommended Action</Text>
+        <Text style={styles.aiActionBody}>
+          Swap two planned restaurant dinners for home-prepared meals.
+        </Text>
+        <TouchableOpacity style={styles.aiBtn}>
+          <Text style={styles.aiBtnText}>Add to Budget Plan</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.aiCaption}>· based on 7-day rolling baseline · 12 transactions</Text>
+    </View>
+  );
+}
 
 function TransactionItem({ item }) {
   return (
@@ -143,11 +173,13 @@ export default function Transactions() {
     fetchPage(category, nextPage, true, search);
   };
 
+  const [period, setPeriod] = useState('Month');
+
   if (loading) {
     return (
       <View style={[styles.container, WEB_GRADIENT]}>
         <View style={[styles.hero, !IS_WEB && { paddingTop: insets.top + 16 }]}>
-          <Text style={styles.heading}>Transactions</Text>
+          <Text style={styles.heading}>Spending Analysis</Text>
           <Text style={styles.subheading}>Your spending history</Text>
         </View>
         <View style={styles.contentArea}>
@@ -161,7 +193,7 @@ export default function Transactions() {
     return (
       <View style={[styles.container, WEB_GRADIENT]}>
         <View style={[styles.hero, !IS_WEB && { paddingTop: insets.top + 16 }]}>
-          <Text style={styles.heading}>Transactions</Text>
+          <Text style={styles.heading}>Spending Analysis</Text>
           <Text style={styles.subheading}>Your spending history</Text>
         </View>
         <View style={[styles.contentArea, styles.center]}>
@@ -177,10 +209,33 @@ export default function Transactions() {
   return (
     <View style={[styles.container, WEB_GRADIENT]}>
       <View style={[styles.hero, !IS_WEB && { paddingTop: insets.top + 16 }]}>
-        <Text style={styles.heading}>Transactions</Text>
-        <Text style={styles.subheading}>Your spending history</Text>
+        <Text style={styles.heading}>Spending Analysis</Text>
+        <Text style={styles.subheading}>
+          {new Date().toLocaleString('en-CA', { month: 'long', year: 'numeric' })}
+        </Text>
       </View>
       <View style={styles.contentArea}>
+        {/* Period chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.periodChips}
+        >
+          {PERIODS.map((p) => (
+            <TouchableOpacity
+              key={p}
+              style={[styles.periodChip, period === p && styles.periodChipActive]}
+              onPress={() => setPeriod(p)}
+            >
+              <Text style={[styles.periodChipText, period === p && styles.periodChipTextActive]}>{p}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Behavioral AI insight */}
+        <BehavioralInsight />
+
+        {/* Search + category filter */}
         <View style={styles.searchRow}>
           <Ionicons name="search-outline" size={16} color="#aaa" style={{ marginRight: 8 }} />
           <TextInput
@@ -210,6 +265,7 @@ export default function Transactions() {
             ))}
           </ScrollView>
         </View>
+
         <FlatList
           data={transactions}
           keyExtractor={(i) => i.id}
@@ -242,11 +298,38 @@ const styles = StyleSheet.create({
   meta:        { color: '#999', marginTop: 3, fontSize: 12 },
   amount:      { fontSize: 15, fontWeight: '700' },
   sep:         { height: 1, backgroundColor: '#ECE8DC', marginLeft: 16 },
+
+  // Period chips
+  periodChips: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  periodChip:  { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#FBF9F4', borderWidth: 1, borderColor: '#ECE8DC' },
+  periodChipActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+  periodChipText:   { fontSize: 12.5, fontWeight: '700', color: '#0F172A' },
+  periodChipTextActive: { color: '#fff' },
+
+  // AI behavioral insight card
+  aiCard: {
+    marginHorizontal: 12, marginBottom: 8, backgroundColor: '#fff', borderRadius: 20, padding: 16,
+    borderWidth: 1.5, borderColor: 'rgba(124,58,237,0.2)', overflow: 'hidden',
+    shadowColor: '#7C3AED', shadowOpacity: 0.18, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 4,
+    position: 'relative',
+  },
+  aiHeader: { marginBottom: 8 },
+  aiChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(124,58,237,0.1)', borderRadius: 20 },
+  aiChipText: { fontSize: 10, fontWeight: '800', color: '#7C3AED', textTransform: 'uppercase', letterSpacing: 0.8 },
+  aiTitle:    { fontSize: 17, fontWeight: '700', color: '#0F172A', letterSpacing: -0.3, lineHeight: 23, marginBottom: 6 },
+  aiBody:     { fontSize: 12.5, color: '#888', lineHeight: 18, marginBottom: 12 },
+  aiAction:   { backgroundColor: '#F7F4EC', borderRadius: 14, padding: 12 },
+  aiActionLabel: { fontSize: 10.5, fontWeight: '700', color: '#0F172A', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 6 },
+  aiActionBody:  { fontSize: 12.5, color: '#0F172A', lineHeight: 18, marginBottom: 10 },
+  aiBtn:      { backgroundColor: '#0F172A', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  aiBtnText:  { fontSize: 12.5, fontWeight: '700', color: '#fff' },
+  aiCaption:  { fontStyle: 'italic', fontSize: 11, fontWeight: '500', color: '#7C3AED', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(124,58,237,0.25)', borderStyle: 'dashed' },
+
   searchRow: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#F0EEE6', borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 10,
-    marginHorizontal: 12, marginTop: 12, marginBottom: 4,
+    marginHorizontal: 12, marginTop: 4, marginBottom: 4,
   },
   searchInput: { flex: 1, fontSize: 14, color: '#0F172A' },
   catBtn:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F0EEE6', marginHorizontal: 4 },

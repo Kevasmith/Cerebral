@@ -96,23 +96,8 @@ export default function SignIn() {
   const [error, setError]             = useState('');
   const [forgotVisible, setForgotVisible] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const { signIn, signUp, signInWithApple } = useAuthStore();
-
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    setError('');
-    try {
-      const callbackURL = IS_WEB ? window.location.origin : 'cerebral://';
-      await authClient.signIn.social({ provider: 'google', callbackURL });
-      // On web this redirects the browser; execution stops here.
-      // On native we'd need expo-web-browser — not yet implemented.
-    } catch (e) {
-      setError(e.message || 'Google sign-in failed. Try again.');
-      setGoogleLoading(false);
-    }
-  };
 
   const validate = () => {
     if (!email.trim()) return 'Email is required.';
@@ -294,30 +279,6 @@ export default function SignIn() {
               </Text>
             </TouchableOpacity>
 
-            {/* Social sign-in */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerLabel}>Or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.googleBtn}
-              onPress={handleGoogleSignIn}
-              disabled={googleLoading}
-              activeOpacity={0.75}
-            >
-              {googleLoading
-                ? <ActivityIndicator size="small" color="#444" />
-                : (
-                  <>
-                    <Text style={styles.googleG}>G</Text>
-                    <Text style={styles.googleBtnText}>Continue with Google</Text>
-                  </>
-                )
-              }
-            </TouchableOpacity>
-
             {/* Sign in with Apple — iOS only */}
             {Platform.OS === 'ios' && AppleAuthentication?.AppleAuthenticationButton && (
               <>
@@ -472,17 +433,6 @@ const styles = StyleSheet.create({
   divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
   dividerLine:  { flex: 1, height: 1, backgroundColor: '#ECE8DC' },
   dividerLabel: { fontSize: 12, color: '#b0b8c1', fontWeight: '500' },
-
-  googleBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', borderRadius: 13, paddingVertical: 13,
-    marginBottom: 10, gap: 10,
-    borderWidth: 1, borderColor: '#ECE8DC',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  googleG:       { fontSize: 17, fontWeight: '800', color: '#EA4335' },
-  googleBtnText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
 
   appleBtn: { width: '100%', height: 50, marginTop: 4 },
 

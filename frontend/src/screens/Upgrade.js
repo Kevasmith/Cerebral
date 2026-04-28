@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(10,145,101,0.3)',
   },
   badgeText:  { fontSize: 12, fontWeight: '700', color: '#0a9165' },
-  heroTitle:  { fontSize: 30, fontWeight: '900', color: '#fff', lineHeight: 36, marginBottom: 12 },
+  heroTitle:  { fontSize: 30, fontWeight: '900', color: '#fff', lineHeight: 36, marginBottom: 12, ...(IS_WEB && { fontFamily: 'Geist' }) },
   heroSub:    { fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 21 },
 
   contentArea: {
@@ -299,10 +299,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     marginBottom: 16,
   },
-  planName:    { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  planName:    { fontSize: 20, fontWeight: '800', color: '#0F172A', ...(IS_WEB && { fontFamily: 'Geist' }) },
   planTagline: { fontSize: 12, color: '#888', marginTop: 2 },
   priceWrap:   { alignItems: 'flex-end' },
-  price:       { fontSize: 28, fontWeight: '900' },
+  price:       { fontSize: 28, fontWeight: '900', ...(IS_WEB && { fontFamily: 'Geist' }) },
   period:      { fontSize: 12, color: '#888', marginTop: 2 },
 
   featureList: { marginBottom: 20 },
