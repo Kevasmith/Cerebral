@@ -24,7 +24,7 @@ export const PLANS = {
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
-  private readonly stripe: InstanceType<typeof Stripe> | null;
+  private readonly stripe: any;
 
   constructor(
     @InjectRepository(Subscription)
@@ -49,7 +49,7 @@ export class BillingService {
 
     const existing = await this.subscriptions.findOne({ where: { userId } });
 
-    const sessionOptions: Stripe.Checkout.SessionCreateParams = {
+    const sessionOptions: any = {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
@@ -59,13 +59,13 @@ export class BillingService {
     };
 
     if (existing?.stripeCustomerId) {
-      (sessionOptions as any).customer = existing.stripeCustomerId;
+      sessionOptions.customer = existing.stripeCustomerId;
     } else {
       sessionOptions.customer_email = userEmail;
     }
 
     const session = await this.stripe.checkout.sessions.create(sessionOptions);
-    return { url: session.url! };
+    return { url: session.url };
   }
 
   async createPortalSession(userId: string, returnUrl: string): Promise<{ url: string }> {
@@ -92,7 +92,7 @@ export class BillingService {
       return;
     }
 
-    let event: Stripe.Event;
+    let event: any;
     try {
       event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err: any) {
@@ -101,21 +101,21 @@ export class BillingService {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await this.onCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+        await this.onCheckoutCompleted(event.data.object);
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await this.onSubscriptionUpdated(event.data.object as Stripe.Subscription);
+        await this.onSubscriptionUpdated(event.data.object);
         break;
       case 'customer.subscription.deleted':
-        await this.onSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        await this.onSubscriptionDeleted(event.data.object);
         break;
       default:
         break;
     }
   }
 
-  private async onCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
+  private async onCheckoutCompleted(session: any): Promise<void> {
     const userId = session.metadata?.userId;
     if (!userId) {
       this.logger.warn('checkout.session.completed missing userId in metadata');
@@ -129,7 +129,9 @@ export class BillingService {
     let currentPeriodEnd: Date | null = null;
     if (stripeSubscriptionId && this.stripe) {
       const stripeSub = await this.stripe.subscriptions.retrieve(stripeSubscriptionId);
-      currentPeriodEnd = new Date(stripeSub.current_period_end * 1000);
+      currentPeriodEnd = stripeSub.current_period_end
+        ? new Date(stripeSub.current_period_end * 1000)
+        : null;
     }
 
     await this.subscriptions.upsert(
@@ -138,14 +140,16 @@ export class BillingService {
     );
   }
 
-  private async onSubscriptionUpdated(stripeSub: Stripe.Subscription): Promise<void> {
+  private async onSubscriptionUpdated(stripeSub: any): Promise<void> {
     const stripeCustomerId = stripeSub.customer as string;
     const sub = await this.subscriptions.findOne({ where: { stripeCustomerId } });
     if (!sub) return;
 
-    const priceId = stripeSub.items.data[0]?.price?.id ?? '';
+    const priceId = stripeSub.items?.data?.[0]?.price?.id ?? '';
     const plan = this.priceIdToPlan(priceId);
-    const currentPeriodEnd = new Date(stripeSub.current_period_end * 1000);
+    const currentPeriodEnd = stripeSub.current_period_end
+      ? new Date(stripeSub.current_period_end * 1000)
+      : null;
 
     await this.subscriptions.update(sub.id, {
       plan,
@@ -155,7 +159,7 @@ export class BillingService {
     });
   }
 
-  private async onSubscriptionDeleted(stripeSub: Stripe.Subscription): Promise<void> {
+  private async onSubscriptionDeleted(stripeSub: any): Promise<void> {
     const stripeCustomerId = stripeSub.customer as string;
     const sub = await this.subscriptions.findOne({ where: { stripeCustomerId } });
     if (!sub) return;
