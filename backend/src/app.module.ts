@@ -26,6 +26,7 @@ import { HealthModule } from './modules/health/health.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { WaitlistEntry } from './entities/waitlist-entry.entity';
+import { Subscription } from './entities/subscription.entity';
 import { RlsInterceptor } from './common/rls/rls.interceptor';
 import { rlsContext } from './common/rls/rls-context';
 
@@ -47,7 +48,7 @@ import { rlsContext } from './common/rls/rls-context';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const db = config.get('database') as any;
-        const entities = [User, Account, Transaction, Insight, Opportunity, Preference, WaitlistEntry];
+        const entities = [User, Account, Transaction, Insight, Opportunity, Preference, WaitlistEntry, Subscription];
 
         const syncEnv = process.env.TYPEORM_SYNCHRONIZE;
         const synchronize = syncEnv === 'false' ? false : true;

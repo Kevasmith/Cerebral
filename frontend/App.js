@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { api } from './src/api/client';
 import useAuthStore from './src/store/authStore';
+import useBillingStore from './src/store/billingStore';
 import { registerForPushNotifications } from './src/utils/notifications';
 import WebTopNav from './src/components/WebTopNav';
 
@@ -19,6 +20,7 @@ import Opportunities from './src/screens/Opportunities';
 import Chat from './src/screens/Chat';
 import Profile from './src/screens/Profile';
 import Upgrade from './src/screens/Upgrade';
+import BillingSuccess from './src/screens/BillingSuccess';
 
 const WEB_MAX_WIDTH = 960;
 const IS_WEB = Platform.OS === 'web';
@@ -79,8 +81,19 @@ function MainTabs() {
   );
 }
 
+const linking = {
+  prefixes: ['cerebral://', 'https://cerebral-production.up.railway.app'],
+  config: {
+    screens: {
+      BillingSuccess: 'billing-success',
+    },
+  },
+};
+
 export default function App() {
   const { user, isLoading, isOnboarded, init } = useAuthStore();
+  const fetchBilling = useBillingStore((s) => s.fetch);
+  const resetBilling = useBillingStore((s) => s.reset);
   const notificationListener = useRef();
   const responseListener = useRef();
 
@@ -106,6 +119,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (user) {
+      fetchBilling();
+    } else {
+      resetBilling();
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (!user) return;
     registerForPushNotifications()
       .then((token) => {
@@ -125,7 +146,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" translucent={false} />
-      <NavigationContainer>
+      <NavigationContainer linking={linking}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!user ? (
             <Stack.Screen name="SignIn" component={SignIn} />
@@ -135,6 +156,7 @@ export default function App() {
             <>
               <Stack.Screen name="Main" component={MainTabs} />
               <Stack.Screen name="Upgrade" component={Upgrade} options={{ animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="BillingSuccess" component={BillingSuccess} options={{ animation: 'fade' }} />
             </>
           )}
         </Stack.Navigator>

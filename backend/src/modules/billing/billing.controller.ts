@@ -1,9 +1,12 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { IsEnum, IsString, IsUrl } from 'class-validator';
+import {
+  Controller, Post, Get, Body, UseGuards,
+  Headers, Req, HttpCode, HttpStatus,
+} from '@nestjs/common';
+import { IsEnum, IsUrl } from 'class-validator';
+import { Request } from 'express';
 import { BillingService, PLANS } from './billing.service';
 import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
 
 class CreateCheckoutDto {
   @IsEnum(Object.keys(PLANS))
@@ -17,35 +20,50 @@ class CreateCheckoutDto {
 }
 
 class CreatePortalDto {
-  @IsString()
-  customerId: string;
-
   @IsUrl()
   returnUrl: string;
 }
 
 @Controller('billing')
-@UseGuards(BetterAuthGuard)
 export class BillingController {
-  constructor(
-    private readonly billing: BillingService,
-    private readonly usersService: UsersService,
-  ) {}
+  constructor(private readonly billing: BillingService) {}
 
   @Post('checkout')
+  @UseGuards(BetterAuthGuard)
   async checkout(
     @CurrentUser() user: { id: string; email: string },
     @Body() dto: CreateCheckoutDto,
   ) {
-    return this.billing.createCheckoutSession(dto.plan, user.email, dto.successUrl, dto.cancelUrl);
+    return this.billing.createCheckoutSession(dto.plan, user.id, user.email, dto.successUrl, dto.cancelUrl);
   }
 
   @Post('portal')
-  async portal(@Body() dto: CreatePortalDto) {
-    return this.billing.createPortalSession(dto.customerId, dto.returnUrl);
+  @UseGuards(BetterAuthGuard)
+  async portal(
+    @CurrentUser() user: { id: string },
+    @Body() dto: CreatePortalDto,
+  ) {
+    return this.billing.createPortalSession(user.id, dto.returnUrl);
   }
 
-  @Post('status')
+  @Get('subscription')
+  @UseGuards(BetterAuthGuard)
+  async subscription(@CurrentUser() user: { id: string }) {
+    return this.billing.getSubscription(user.id);
+  }
+
+  // Stripe calls this directly — no auth guard, needs raw body for signature verification
+  @Post('webhook')
+  @HttpCode(HttpStatus.OK)
+  async webhook(
+    @Headers('stripe-signature') signature: string,
+    @Req() req: Request & { rawBody?: Buffer },
+  ) {
+    await this.billing.handleWebhook(req.rawBody!, signature);
+  }
+
+  @Get('status')
+  @UseGuards(BetterAuthGuard)
   status() {
     return { configured: this.billing.isConfigured(), plans: PLANS };
   }
