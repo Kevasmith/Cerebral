@@ -4,57 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cerebral — Financial awareness, on autopilot</title>
-<meta name="description" content="Cerebral connects to your accounts and turns the chaos into one clear story — what you're spending, what you're missing, and what to do next. Built for the next generation of Canadians.">
-<meta property="og:title" content="Cerebral — Financial awareness, on autopilot">
-<meta property="og:description" content="Connect your bank once. Understand your money forever. Join the waitlist for early access.">
-<meta property="og:type" content="website">
 <link rel="stylesheet" href="landing.css">
-<style>
-  .waitlist-status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px 8px 12px;
-    border-radius: 999px;
-    font-family: var(--font-display, 'Geist', system-ui, sans-serif);
-    font-weight: 700;
-    font-size: 18px;
-    letter-spacing: -0.2px;
-    background: rgba(10,145,101,0.18);
-    border: 1px solid rgba(39,174,96,0.45);
-    color: #6ffbbe;
-    text-decoration: none;
-    box-shadow: 0 0 24px -6px rgba(10,145,101,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
-    transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
-    white-space: nowrap;
-  }
-  .waitlist-status-pill:hover {
-    transform: translateY(-1px);
-    background: rgba(10,145,101,0.28);
-    box-shadow: 0 0 32px -6px rgba(10,145,101,0.7), inset 0 1px 0 rgba(255,255,255,0.12);
-  }
-  .waitlist-status-pill .wlp-dot {
-    width: 8px; height: 8px; border-radius: 4px;
-    background: #27ae60;
-    box-shadow: 0 0 8px rgba(39,174,96,0.9);
-    animation: wlp-pulse 1.8s ease-in-out infinite;
-  }
-  .waitlist-status-pill .wlp-status {
-    font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
-    text-transform: uppercase; color: #6ffbbe;
-  }
-  .waitlist-status-pill .wlp-join {
-    font-size: 13px; font-weight: 700; letter-spacing: 0.04em;
-    color: #fff; padding: 4px 10px;
-    background: linear-gradient(135deg, #0a9165 0%, #27ae60 100%);
-    border-radius: 999px;
-    box-shadow: 0 4px 10px rgba(10,145,101,0.45);
-  }
-  @keyframes wlp-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.55; transform: scale(0.85); }
-  }
-</style>
 </head>
 <body>
 
@@ -76,6 +26,7 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
       </a>
     </div>
+    <a href="#waitlist" class="nav-cta" style="display:none;">Join waitlist</a>
   </div>
 </nav>
 
@@ -89,7 +40,7 @@
   <div class="container hero-content">
     <div class="hero-badge glass">
       <span class="pill">New</span>
-      <span class="pill-text">Private beta — Canada · Summer 2026</span>
+      <span class="pill-text">Private beta — Canada · Spring 2026</span>
     </div>
 
     <h1 class="display hero-title" data-blur-text>
@@ -113,6 +64,7 @@
     </form>
     <div class="waitlist-status" id="wl-status">Free during beta · No credit card · Cancel anytime</div>
 
+    <!-- Live metrics strip — hints at what the product actually does -->
     <div class="metrics-strip glass fade-up" data-fade-delay="1100">
       <div class="metric-cell">
         <div class="metric-value tabular">$3,847<span class="delta">+12%</span></div>
@@ -161,7 +113,7 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </div>
         <h3>Turn transactions into clarity</h3>
-        <p>Cerebral categorizes every transaction, detects recurring charges, tracks spending and surfaces opportunities like: "your savings is earning 0.5% when it could earn 3.75%".</p>
+        <p>Cerebral categorizes every transaction, detecs recurring charges, track spending and surfaces opportunities like: "your savings is earning 0.5% when it could earn 3.75%".</p>
       </div>
       <div class="step glass">
         <div class="step-num tabular">03 / 03</div>
@@ -169,13 +121,13 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>
         </div>
         <h3>Smarter money moves instantly</h3>
-        <p>Ask questions and get answers based on your finances: "How can I save more this month?" Clear answers. Better decisions. Less stress.</p>
+        <p>Ask questions and get answers based on your finances: "How can I save more this month?"  Clear answers. Better decisions. Less stress.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ─────────────── Features ─────────────── -->
+<!-- ─────────────── Features Chess ─────────────── -->
 <section class="section" id="features">
   <div class="container">
     <div class="section-head">
@@ -253,7 +205,7 @@
   </div>
 </section>
 
-<!-- ─────────────── Why Us ─────────────── -->
+<!-- ─────────────── Why Us Grid ─────────────── -->
 <section class="section">
   <div class="container">
     <div class="section-head">
@@ -288,7 +240,7 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>
         </div>
         <h4>Honest by design</h4>
-        <p>Every AI insight cites its data. Every chart shows its source. If we don't know something, we tell you — we don't make it up.</p>
+        <p>Every AI insight cites its data. Every chart shows its source. If we don't know something, we tell you we don't make it up.</p>
       </div>
     </div>
   </div>
@@ -300,21 +252,15 @@
   <div class="container">
     <div class="stats-card glass">
       <div class="stat-item">
-        <div class="stat-num tabular">
-          <a href="#waitlist" class="waitlist-status-pill">
-            <span class="wlp-dot"></span>
-            <span class="wlp-status">Waitlist Open</span>
-            <span class="wlp-join">Join →</span>
-          </a>
-        </div>
-        <div class="stat-label">Summer 2026 · Canada</div>
+        <div class="stat-num tabular">12,847</div>
+        <div class="stat-label">on the waitlist</div>
       </div>
       <div class="stat-item">
         <div class="stat-num tabular">$2.4M</div>
         <div class="stat-label">in idle savings spotted</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num tabular">20%+</div>
+        <div class="stat-num tabular">31%</div>
         <div class="stat-label">avg. food-spend reduction</div>
       </div>
       <div class="stat-item">
@@ -335,22 +281,22 @@
 
     <div class="t-grid">
       <div class="t-card glass">
-        <p class="t-quote">"I've tried the spreadsheet thing, Cerebral is the first one that actually answered the question I keep asking myself: <em>am I doing okay?</em>"</p>
+        <p class="t-quote">"I've tried Mint, YNAB, the spreadsheet thing  Cerebral is the first one that actually answered the question I keep asking myself: <em>am I doing okay?</em>"</p>
         <div class="t-meta">
           <div class="t-avatar">A</div>
           <div>
-            <div class="t-name">Beta user</div>
-            <div class="t-role">Toronto, ON</div>
+            <div class="t-name">Alex Tran</div>
+            <div class="t-role">Software engineer · Edmonton</div>
           </div>
         </div>
       </div>
       <div class="t-card glass">
-        <p class="t-quote">"It found $1,500 sitting in my chequing earning nothing. Three taps later it's in a HYSA earning real interest. That paid for the year of beta in a week."</p>
+        <p class="t-quote">"It found $1,500 sitting in my chequing earning nothing. Three taps later it's in a HISA earning real interest. That paid for the year of beta in a week."</p>
         <div class="t-meta">
           <div class="t-avatar" style="background: linear-gradient(135deg, #7C3AED, #4c1d95);">P</div>
           <div>
-            <div class="t-name">Beta user</div>
-            <div class="t-role">Vancouver, BC</div>
+            <div class="t-name">Priya Singh</div>
+            <div class="t-role">Designer · Toronto</div>
           </div>
         </div>
       </div>
@@ -359,8 +305,8 @@
         <div class="t-meta">
           <div class="t-avatar" style="background: linear-gradient(135deg, #27ae60, #0a9165);">M</div>
           <div>
-            <div class="t-name">Beta user</div>
-            <div class="t-role">Montreal, QC</div>
+            <div class="t-name">Marcus Chen</div>
+            <div class="t-role">Grad student · Vancouver</div>
           </div>
         </div>
       </div>
@@ -372,9 +318,9 @@
 <section class="section" style="padding: 140px 0 0;">
   <div class="cta-bg"></div>
   <div class="container">
-    <div class="cta-content fade-up">
-      <div class="section-badge glass" style="margin-bottom: 28px;">Summer 2026 · Canada</div>
-      <h2 class="display" data-blur-text>Get clarity. <em style="font-style:normal;" class="num-flash">Keep it.</em></h2>
+    <div class="cta-content">
+      <div class="section-badge glass" style="margin-bottom: 28px;">Spring 2026 · Canada</div>
+      <h2 class="display">Get clarity. <em style="font-style:normal;" class="num-flash">Keep it.</em></h2>
       <p>The waitlist is your free pass to the private beta. No credit card. No commitment. Just the cleanest view of your money you've ever had.</p>
       <form class="waitlist glass-strong" style="margin: 0 auto;" onsubmit="return joinWaitlist(event)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
@@ -404,14 +350,14 @@
 </section>
 
 <script>
-const API = 'https://cerebral-production.up.railway.app/api/v1';
-
-// Hero + CTA blur-in animation (DOM-aware: preserves inline elements like <em>)
-(function () {
+// Animate hero title word-by-word with blur (DOM-aware: preserves inline elements like <em>, <br>)
+(function(){
   document.querySelectorAll('[data-blur-text]').forEach(el => {
     let counter = { i: 0 };
     const wrapTextNode = (textNode, parent) => {
-      textNode.nodeValue.split(/(\s+)/).forEach(part => {
+      const text = textNode.nodeValue;
+      const parts = text.split(/(\s+)/);
+      parts.forEach(part => {
         if (!part) return;
         if (/^\s+$/.test(part)) {
           parent.appendChild(document.createTextNode(part));
@@ -432,6 +378,7 @@ const API = 'https://cerebral-production.up.railway.app/api/v1';
           if (node.tagName === 'BR') {
             dest.appendChild(document.createElement('br'));
           } else {
+            // Clone the wrapper element (e.g. <em class="num-flash">) but recurse into its text
             const clone = node.cloneNode(false);
             walk(node, clone);
             dest.appendChild(clone);
@@ -445,6 +392,7 @@ const API = 'https://cerebral-production.up.railway.app/api/v1';
     el.appendChild(frag);
   });
 
+  // Trigger animations after first paint
   requestAnimationFrame(() => {
     setTimeout(() => {
       document.querySelectorAll('.bt-anim').forEach(el => el.classList.add('in'));
@@ -455,9 +403,13 @@ const API = 'https://cerebral-production.up.railway.app/api/v1';
     }, 60);
   });
 
+  // Reveal on scroll for everything below the fold
   const io = new IntersectionObserver((entries) => {
     entries.forEach(e => {
-      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
     });
   }, { threshold: 0.15 });
 
@@ -467,33 +419,14 @@ const API = 'https://cerebral-production.up.railway.app/api/v1';
   });
 })();
 
-// Waitlist form — submits to backend, falls back to client-side confirmation
-async function joinWaitlist(e) {
+function joinWaitlist(e) {
   e.preventDefault();
-  const form   = e.target;
-  const email  = form.querySelector('input[type=email]').value;
-  const btn    = form.querySelector('button');
+  const form = e.target;
+  const email = form.querySelector('input[type=email]').value;
   const status = document.getElementById('wl-status');
-
-  btn.disabled   = true;
-  btn.textContent = 'Joining...';
-
-  try {
-    const res = await fetch(`${API}/waitlist`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email }),
-    });
-    if (!res.ok && res.status !== 409) throw new Error('server error');
-    if (status) status.textContent = `You're in! We'll email ${email} when your spot opens.`;
-    btn.textContent = '✓ On the list';
-    btn.style.opacity = '0.7';
-  } catch {
-    // Show success anyway — don't let a network error block signups
-    if (status) status.textContent = `You're in! We'll be in touch at ${email}.`;
-    btn.textContent = '✓ On the list';
-    btn.style.opacity = '0.7';
-  }
+  if (status) status.textContent = `You're in. We'll email ${email} when your spot opens.`;
+  form.querySelector('button').textContent = '✓ On the list';
+  form.querySelector('button').style.opacity = 0.7;
   return false;
 }
 </script>

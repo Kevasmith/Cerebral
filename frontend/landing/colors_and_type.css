@@ -1,0 +1,247 @@
+/* ============================================================
+   Cerebral Design System — Colors & Type
+   AI-powered financial awareness engine.
+   Source of truth for tokens used across all surfaces.
+   ============================================================ */
+
+/* ─── Cerebral Brand Type System ──────────────────────────────
+   Three-family system, one purpose each:
+     • Geist          → Display + Numerals (money, hero, big stats)
+     • Inter          → UI / Body (friendly, readable, knowledgeable-friend voice)
+     • JetBrains Mono → AI source-of-truth (citations, AI "receipts", code)
+   See README › Visual Foundations › Typography for the rationale. */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ─── Brand Colors ───────────────────────────────────────── */
+  --cb-primary:        #0F172A;  /* Navy — primary surface, headings, CTAs */
+  --cb-primary-deep:   #0b2018;  /* Mid stop in signature gradient */
+  --cb-primary-mid:    #085c3a;  /* Mid-green stop in signature gradient */
+  --cb-accent:         #0a9165;  /* Cerebral Green — gains, success, money positive */
+  --cb-accent-bright:  #27ae60;  /* Lighter green for accents (account dots, etc) */
+  --cb-ai:             #7C3AED;  /* AI Violet — chat avatar, AI-only surfaces */
+
+  /* ─── Backgrounds ────────────────────────────────────────── */
+  --cb-bg:             #F4F2EC;  /* Page background — warm cream, slightly desaturated */
+  --cb-bg-card:        #FBF9F4;  /* Card surface — soft off-white with cream warmth */
+  --cb-bg-card-2:      #F7F4EC;  /* Slightly deeper card / nested surface */
+  --cb-bg-input:       #EFEBE0;  /* Filled input fields (auth, etc) */
+  --cb-bg-chip:        #F0EEE6;  /* Account chips on net-worth card */
+  --cb-bg-track:       #ECE9DF;  /* Empty progress track */
+  --cb-bg-divider:     #ECE8DC;  /* Faint row separators */
+
+  /* ─── Text ──────────────────────────────────────────────── */
+  --cb-text:           #111827;  /* Dark slate body */
+  --cb-text-strong:    #0F172A;  /* Navy — headings, large numerals */
+  --cb-text-muted:     #555555;  /* Secondary copy */
+  --cb-text-soft:      #888888;  /* Tertiary / meta */
+  --cb-text-faint:     #9aa3b2;  /* Labels, placeholders */
+  --cb-text-disabled:  #b0b8c1;  /* Disabled / placeholder icons */
+  --cb-text-on-dark:   #ffffff;  /* On navy/gradient */
+  --cb-text-on-dark-soft:rgba(255,255,255,0.6);
+
+  /* ─── Semantic ──────────────────────────────────────────── */
+  --cb-success:        #0a9165;  /* Same as accent — gains, "saved", credit */
+  --cb-success-bg:     #edfaf3;  /* Tinted success surface */
+  --cb-success-bg-2:   #eafaf1;  /* Confirmation cards */
+  --cb-success-bg-3:   #d5f5e3;  /* Income-trend insight card */
+  --cb-warning:        #F59E0B;  /* Amber — over-budget warnings */
+  --cb-warning-bg:     #fff3cd;  /* Overspending insight card */
+  --cb-warning-bg-2:   #fde8d8;  /* Savings-tip insight card */
+  --cb-danger:         #EF4444;  /* Red — over budget, errors, debits */
+  --cb-danger-bg:      #fef0ee;  /* Tinted danger surface */
+  --cb-info:           #2980b9;  /* Educational / "Learn" badge */
+  --cb-info-bg:        #d6eaf8;  /* Opportunity insight card */
+
+  /* ─── Category Colors ───────────────────────────────────── */
+  --cb-cat-bills:         #e74c3c;
+  --cb-cat-food:          #e67e22;
+  --cb-cat-transport:     #3498db;
+  --cb-cat-entertainment: #9b59b6;
+  --cb-cat-shopping:      #27ae60;
+  --cb-cat-health:        #1abc9c;
+
+  /* ─── Borders ───────────────────────────────────────────── */
+  --cb-border:         #E8ECF0;
+  --cb-border-soft:    #f0f0f0;
+  --cb-border-card:    #e0e0e0;
+
+  /* ─── Signature Gradients ───────────────────────────────── */
+  --cb-gradient-hero:
+    linear-gradient(145deg, #0F172A 0%, #0b2018 40%, #085c3a 75%, #0a9165 100%);
+  --cb-gradient-auth:
+    linear-gradient(145deg, #0F172A 0%, #0b2018 28%, #085c3a 58%, #0a9165 100%);
+  --cb-glow-radial:
+    radial-gradient(ellipse 80% 60% at 70% 10%, rgba(10,145,101,0.3) 0%, transparent 65%);
+
+  /* ─── Radii ─────────────────────────────────────────────── */
+  --cb-radius-xs:  6px;
+  --cb-radius-sm:  10px;   /* Pills, badges, small chips */
+  --cb-radius-md:  12px;   /* Inputs, buttons */
+  --cb-radius-lg:  16px;   /* Cards, insight cards */
+  --cb-radius-xl:  20px;   /* Large cards (Spending, Budget) */
+  --cb-radius-2xl: 24px;   /* Net-worth card */
+  --cb-radius-3xl: 28px;   /* Content area sheet (rises off gradient) */
+  --cb-radius-pill: 9999px;
+
+  /* ─── Spacing ───────────────────────────────────────────── */
+  --cb-space-1:  4px;
+  --cb-space-2:  8px;
+  --cb-space-3:  12px;
+  --cb-space-4:  16px;
+  --cb-space-5:  20px;
+  --cb-space-6:  24px;
+  --cb-space-7:  28px;
+  --cb-space-8:  32px;
+  --cb-space-10: 40px;
+
+  /* ─── Shadows (matches `SHADOW` in Dashboard) ───────────── */
+  --cb-shadow-card:
+    0 4px 14px rgba(15, 23, 42, 0.08);
+  --cb-shadow-card-soft:
+    0 2px 6px rgba(15, 23, 42, 0.04);
+  --cb-shadow-cta:
+    0 6px 14px rgba(10, 145, 101, 0.35);
+  --cb-shadow-modal:
+    0 20px 48px rgba(0, 0, 0, 0.35);
+
+  /* ─── Type ──────────────────────────────────────────────── */
+  /* Display — Geist. Used for big numbers, hero text, the Net Worth amount.
+     Geist has true tabular figures and feels confident & modern without being corporate. */
+  --cb-font-display: 'Geist', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  /* UI / Body — Inter. Used for everything else: nav, body, labels, microcopy. */
+  --cb-font-sans:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  /* Mono — JetBrains Mono. Held in reserve for technical/log surfaces (debug,
+     developer views). NOT used for AI receipts — those use italic Inter. */
+  --cb-font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* OpenType features tuned for fintech */
+  --cb-ot-tabular:   'tnum' 1, 'lnum' 1;                 /* tabular lining figures — currency columns */
+  --cb-ot-friendly:  'cv11' 1, 'ss01' 1, 'ss03' 1;       /* Inter: single-story a, disambiguated 1/I/l */
+  --cb-ot-display:   'ss01' 1, 'ss02' 1, 'cv01' 1;       /* Geist alts for tighter display */
+
+  /* Sizes — match React Native screens (mobile-first) */
+  --cb-fs-display: 42px;  /* Net Worth amount */
+  --cb-fs-h1:      26px;  /* Onboarding heading */
+  --cb-fs-h2:      24px;  /* Page hero */
+  --cb-fs-h3:      21px;  /* Card title (auth) */
+  --cb-fs-h4:      17px;  /* Card label */
+  --cb-fs-body:    16px;  /* Card title */
+  --cb-fs-md:      15px;  /* Default text */
+  --cb-fs-sm:      14px;  /* Secondary text */
+  --cb-fs-xs:      13px;  /* Meta */
+  --cb-fs-2xs:     12px;  /* Trend, dividers */
+  --cb-fs-3xs:     11px;  /* Tiny chips, type badges */
+
+  --cb-lh-tight:   1.15;
+  --cb-lh-normal:  1.4;
+  --cb-lh-loose:   1.55;
+}
+
+/* ─── Semantic element styles ──────────────────────────── */
+
+body, .cb-base {
+  font-family: var(--cb-font-sans);
+  color: var(--cb-text);
+  background: var(--cb-bg);
+  font-size: var(--cb-fs-md);
+  line-height: var(--cb-lh-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.cb-display {
+  font-family: var(--cb-font-display);
+  font-feature-settings: var(--cb-ot-display), var(--cb-ot-tabular);
+  font-size: var(--cb-fs-display);
+  font-weight: 700;
+  letter-spacing: -1.4px;
+  color: var(--cb-text-strong);
+  line-height: var(--cb-lh-tight);
+}
+
+.cb-h1, h1 {
+  font-family: var(--cb-font-display);
+  font-feature-settings: var(--cb-ot-display);
+  font-size: var(--cb-fs-h1);
+  font-weight: 700;
+  color: var(--cb-text-strong);
+  letter-spacing: -0.6px;
+  line-height: var(--cb-lh-tight);
+}
+
+.cb-h2, h2 {
+  font-family: var(--cb-font-display);
+  font-feature-settings: var(--cb-ot-display);
+  font-size: var(--cb-fs-h2);
+  font-weight: 700;
+  color: var(--cb-text-strong);
+  letter-spacing: -0.5px;
+}
+
+.cb-h3, h3 {
+  font-family: var(--cb-font-display);
+  font-feature-settings: var(--cb-ot-display);
+  font-size: var(--cb-fs-h3);
+  font-weight: 700;
+  color: var(--cb-text-strong);
+  letter-spacing: -0.3px;
+}
+
+.cb-h4, h4 {
+  font-family: var(--cb-font-sans);
+  font-feature-settings: var(--cb-ot-friendly);
+  font-size: var(--cb-fs-body);
+  font-weight: 700;
+  color: var(--cb-text-strong);
+}
+
+.cb-p, p {
+  font-family: var(--cb-font-sans);
+  font-feature-settings: var(--cb-ot-friendly);
+  font-size: var(--cb-fs-md);
+  color: var(--cb-text);
+  line-height: var(--cb-lh-loose);
+}
+
+.cb-meta {
+  font-size: var(--cb-fs-2xs);
+  color: var(--cb-text-faint);
+}
+
+.cb-eyebrow {
+  font-size: var(--cb-fs-xs);
+  font-weight: 700;
+  color: var(--cb-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.cb-mono, code, pre {
+  font-family: var(--cb-font-mono);
+}
+
+/* Number / amount specimen — tabular figures for currency alignment.
+   Always use Geist for amounts — its 0/1/$ are tuned for financial UIs. */
+.cb-amount {
+  font-family: var(--cb-font-display);
+  font-feature-settings: var(--cb-ot-tabular);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.6px;
+  color: var(--cb-text-strong);
+}
+
+/* AI receipts — the small italic line under an insight that cites its data
+   source. Pair with a 5px violet dot and (optionally) a dashed violet hairline
+   divider above. Italic Inter reads as a footnote, not a code block. */
+.cb-ai-receipt {
+  font-family: var(--cb-font-sans);
+  font-feature-settings: var(--cb-ot-friendly);
+  font-style: italic;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--cb-ai);
+  letter-spacing: 0;
+  text-transform: none;
+}
