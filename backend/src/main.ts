@@ -153,8 +153,20 @@ async function bootstrap() {
     logger.warn('CORS_ORIGIN is not set in production — defaulting to * which allows all origins. Set CORS_ORIGIN to your frontend URL.');
   }
 
+  // CORS_ORIGIN supports comma-separated values for multiple allowed origins
+  // e.g. "https://app.cerebral.ca,https://cerebral.ca"
+  const allowedOrigins = corsOrigin
+    ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean)
+    : null;
+
   app.enableCors({
-    origin: corsOrigin ?? (isProd ? false : '*'),
+    origin: allowedOrigins
+      ? (origin, cb) => {
+          // Allow same-origin (no Origin header) and listed origins
+          if (!origin || allowedOrigins.includes(origin)) cb(null, true);
+          else cb(new Error(`CORS: ${origin} not allowed`));
+        }
+      : isProd ? false : '*',
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type'],
     credentials: true,
