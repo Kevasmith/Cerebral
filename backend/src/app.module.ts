@@ -114,52 +114,31 @@ export class AppModule implements OnModuleInit {
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-  /**
-   * Hook into the pg connection pool once all modules are initialized.
-   * Every new physical connection gets a wrapped `query()` that injects
-   * `set_config('app.current_user_id', ...)` before the real query using
-   * the user ID stored in AsyncLocalStorage by RlsInterceptor.
-   *
-   * Because Node.js is single-threaded and AsyncLocalStorage is async-context-
-   * scoped, concurrent requests using the same pooled connection are correctly
-   * isolated — each query reads the ID for its own async context.
-   */
+  // Hook pool.connect so set_config runs once per connection checkout, not
+  // before every query. Avoids the pg@8 "already executing" deprecation warning
+  // that fired when two queries were chained on the same client.
   onModuleInit() {
     const driver = (this.dataSource as any).driver;
     const pool = driver?.master; // pg.Pool instance
-    if (!pool?.on) {
+    if (!pool?.connect) {
       console.warn('[RLS] Could not find pg pool — row-level security hook skipped');
       return;
     }
 
-    pool.on('connect', (client: any) => {
-      const origQuery: (...args: unknown[]) => unknown = client.query.bind(client);
-
-      client.query = (...args: unknown[]) => {
-        const userId = rlsContext.getUserId();
-        // set_config(name, value, is_local):
-        //   is_local=false → session-scoped (survives the current transaction boundary)
-        const setCfg = userId
-          ? `SELECT set_config('app.current_user_id', '${userId.replace(/'/g, "''")}', false)`
-          : `SELECT set_config('app.current_user_id', '', false)`;
-
-        const hasCallback = typeof args[args.length - 1] === 'function';
-
-        if (hasCallback) {
-          const cb = args[args.length - 1] as (...a: unknown[]) => void;
-          const rest = args.slice(0, -1);
-          origQuery(setCfg, (err: Error | null) => {
-            if (err) console.error('[RLS] set_config error:', err.message);
-            origQuery(...rest, cb);
-          });
-        } else {
-          return (origQuery(setCfg) as Promise<unknown>).then(
-            () => origQuery(...args),
-            () => origQuery(...args), // still run the query on set_config failure
-          );
-        }
-      };
-    });
+    const origConnect = pool.connect.bind(pool) as () => Promise<any>;
+    pool.connect = async () => {
+      const client = await origConnect();
+      const userId = rlsContext.getUserId();
+      const escapedId = (userId ?? '').replace(/'/g, "''");
+      try {
+        await client.query(
+          `SELECT set_config('app.current_user_id', '${escapedId}', false)`,
+        );
+      } catch (err: any) {
+        console.error('[RLS] set_config error:', err.message);
+      }
+      return client;
+    };
 
     console.log('[RLS] pg pool hook registered — row-level security active');
   }
