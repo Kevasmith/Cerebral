@@ -11,7 +11,7 @@ export class MailService {
   constructor() {
     const key = process.env.RESEND_API_KEY;
     this.resend = key ? new Resend(key) : null;
-    this.from = process.env.RESEND_FROM_EMAIL ?? 'Cerebral <onboarding@resend.dev>';
+    this.from = process.env.RESEND_FROM_EMAIL ?? 'Cerebral <hello@contact.cerebralwealth.app>';
     this.adminEmail = process.env.ADMIN_EMAIL ?? 'goldensmith24@gmail.com';
     if (!key) this.logger.warn('RESEND_API_KEY not set — email is disabled');
   }
@@ -22,17 +22,33 @@ export class MailService {
       await this.resend.emails.send({
         from: this.from,
         to: email,
-        subject: "You're on the Cerebral waitlist 🎉",
+        subject: "You're officially on the Cerebral waitlist.",
         html: `
           <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #1e293b;">
-            <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 8px;">You're on the list.</h1>
+            <h1 style="font-size: 26px; font-weight: 800; margin-bottom: 16px;">You're officially on the Cerebral waitlist.</h1>
             <p style="font-size: 16px; color: #475569; line-height: 1.6; margin-bottom: 24px;">
-              Thanks for signing up for early access to <strong>Cerebral</strong> — your AI-powered financial awareness app built for Canadians.
+              Thanks for signing up and joining our community!
             </p>
+            <p style="font-size: 16px; color: #475569; line-height: 1.6; margin-bottom: 12px;">
+              As an early waitlist member, you'll be first in line for:
+            </p>
+            <ul style="font-size: 16px; color: #475569; line-height: 1.8; margin: 0 0 24px 0; padding-left: 20px;">
+              <li>Private beta access</li>
+              <li>Early feature drops</li>
+              <li>Behind-the-scenes updates</li>
+              <li>Priority invites when we launch</li>
+              <li>The chance to help shape Cerebral from day one</li>
+            </ul>
             <p style="font-size: 16px; color: #475569; line-height: 1.6; margin-bottom: 24px;">
-              We're putting the finishing touches on the experience. You'll be among the first to know when we launch.
+              We'll send you an email as soon as we launch.
             </p>
-            <p style="font-size: 14px; color: #94a3b8;">— The Cerebral team</p>
+            <p style="font-size: 16px; color: #475569; line-height: 1.6; margin-bottom: 8px;">
+              Thanks again for being a part of financial intelligence.
+            </p>
+            <p style="font-size: 16px; color: #1e293b; margin-bottom: 24px;">— The Cerebral Team</p>
+            <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
+              P.S. If you know someone who always says "I need to get better with money," send them our way.
+            </p>
           </div>
         `,
       });
