@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, Linking,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, Linking, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useAuthStore from '../store/authStore';
@@ -154,9 +154,11 @@ export default function SignIn() {
 
       {/* Cerebral logo — top left */}
       <View style={styles.logoArea}>
-        <View style={styles.logoIconWrap}>
-          <Ionicons name="analytics-outline" size={13} color="#fff" />
-        </View>
+        <Image
+          source={require('../../../assets/logo-mark.png')}
+          style={styles.logoImg}
+          resizeMode="contain"
+        />
         <Text style={styles.logoText}>Cerebral</Text>
       </View>
 
@@ -345,11 +347,7 @@ const styles = StyleSheet.create({
     gap: 8,
     zIndex: 10,
   },
-  logoIconWrap: {
-    width: 28, height: 28, borderRadius: 8,
-    backgroundColor: '#0a9165',
-    justifyContent: 'center', alignItems: 'center',
-  },
+  logoImg: { width: 36, height: 36, borderRadius: 18 },
   logoText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   cardArea: {
