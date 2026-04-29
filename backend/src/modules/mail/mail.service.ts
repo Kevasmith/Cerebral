@@ -25,7 +25,10 @@ export class MailService {
         subject: "You're officially on the Cerebral waitlist.",
         html: `
           <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #1e293b;">
-            <h1 style="font-size: 26px; font-weight: 800; margin-bottom: 16px;">You're officially on the Cerebral waitlist.</h1>
+            <h1 style="font-size: 26px; font-weight: 800; margin-bottom: 16px;">You're officially on the <strong>Cerebral Waitlist</strong>.</h1>
+            <p style="font-size: 16px; color: #1e293b; font-weight: 800; line-height: 1.6; margin-bottom: 8px;">
+              You're on the list!
+            </p>
             <p style="font-size: 16px; color: #475569; line-height: 1.6; margin-bottom: 24px;">
               Thanks for signing up and joining our community!
             </p>
