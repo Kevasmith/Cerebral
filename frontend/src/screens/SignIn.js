@@ -155,7 +155,7 @@ export default function SignIn() {
       {/* Cerebral logo — top left */}
       <View style={styles.logoArea}>
         <Image
-          source={require('../../../assets/logo-mark.png')}
+          source={require('../../assets/logo-mark.png')}
           style={styles.logoImg}
           resizeMode="contain"
         />
@@ -319,11 +319,11 @@ export default function SignIn() {
       {/* Privacy + Terms — visible before sign-up, required by Apple */}
       <View style={styles.legalRow}>
         <Text style={styles.legalText}>By continuing you agree to our </Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://cerebral.app/terms')}>
+        <TouchableOpacity onPress={() => Linking.openURL('https://cerebralwealth.app/terms.html')}>
           <Text style={styles.legalLink}>Terms</Text>
         </TouchableOpacity>
         <Text style={styles.legalText}> and </Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://cerebral.app/privacy')}>
+        <TouchableOpacity onPress={() => Linking.openURL('https://cerebralwealth.app/privacy.html')}>
           <Text style={styles.legalLink}>Privacy Policy</Text>
         </TouchableOpacity>
       </View>
