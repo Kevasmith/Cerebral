@@ -24,6 +24,7 @@ import BillingSuccess from './src/screens/BillingSuccess';
 import InsightDetail from './src/screens/InsightDetail';
 import ConnectBank from './src/screens/ConnectBank';
 import Snapshot from './src/screens/Snapshot';
+import Savings from './src/screens/Savings';
 
 const WEB_MAX_WIDTH = 960;
 const IS_WEB = Platform.OS === 'web';
@@ -163,6 +164,7 @@ export default function App() {
               <Stack.Screen name="InsightDetail" component={InsightDetail} options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="ConnectBank" component={ConnectBank} options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="Snapshot" component={Snapshot} options={{ animation: 'fade' }} />
+              <Stack.Screen name="Savings" component={Savings} options={{ animation: 'fade' }} />
             </>
           )}
         </Stack.Navigator>
