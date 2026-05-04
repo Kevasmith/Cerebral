@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
 import ChatSheet from '../components/ChatSheet';
+import CerebralAvatar from '../components/CerebralAvatar';
 
 const IS_WEB = Platform.OS === 'web';
 const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
@@ -250,9 +251,7 @@ export default function Accounts({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerLeft} onPress={() => setChatOpen(true)} activeOpacity={0.75}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
+          <CerebralAvatar />
           <View>
             <Text style={[styles.headerBrand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
             <Text style={styles.headerSub}>Intelligence</Text>
@@ -427,14 +426,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: C.border,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: C.card,
-    borderWidth: 1.5, borderColor: C.tealBorder,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { color: C.teal, fontSize: 15, fontWeight: '800' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerBrand: { fontSize: 16, fontWeight: '800', color: C.white, lineHeight: 19 },
   headerSub:   { fontSize: 10, fontWeight: '600', color: C.teal, letterSpacing: 1.2, lineHeight: 14 },
   bellBtn: { padding: 2 },

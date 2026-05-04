@@ -4,6 +4,7 @@ import {
   RefreshControl, Platform, Dimensions,
 } from 'react-native';
 import ChatSheet from '../components/ChatSheet';
+import CerebralAvatar from '../components/CerebralAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
@@ -160,9 +161,7 @@ export default function Savings({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerLeft} onPress={() => setChatOpen(true)} activeOpacity={0.75}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={14} color={C.white} />
-          </View>
+          <CerebralAvatar />
           <Text style={[styles.brand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
@@ -271,12 +270,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: C.border,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: C.card, borderWidth: 1, borderColor: C.tealBorder,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brand:   { fontSize: 17, fontWeight: '700', color: C.white },
   bellBtn: { padding: 4 },
 
