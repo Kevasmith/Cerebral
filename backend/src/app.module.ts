@@ -131,19 +131,39 @@ export class AppModule implements OnModuleInit {
       return;
     }
 
-    const origConnect = pool.connect.bind(pool) as () => Promise<any>;
-    pool.connect = async () => {
-      const client = await origConnect();
+    const origConnect = pool.connect.bind(pool);
+
+    // TypeORM calls pool.connect(callback) — callback style.
+    // Direct callers may use pool.connect() — Promise style.
+    // The old hook was async () => {} with no params, so the callback was
+    // silently ignored and TypeORM's internal Promise hung forever.
+    pool.connect = function (callback?: (err: Error | null, client?: any, release?: () => void) => void) {
       const userId = rlsContext.getUserId();
       const escapedId = (userId ?? '').replace(/'/g, "''");
-      try {
-        await client.query(
-          `SELECT set_config('app.current_user_id', '${escapedId}', false)`,
-        );
-      } catch (err: any) {
-        console.error('[RLS] set_config error:', err.message);
+      const sql = `SELECT set_config('app.current_user_id', '${escapedId}', false)`;
+
+      if (typeof callback === 'function') {
+        // TypeORM callback path
+        origConnect((err: any, client: any, release: any) => {
+          if (err) return callback(err);
+          client.query(sql, (qErr: any) => {
+            if (qErr) console.error('[RLS] set_config error:', qErr.message);
+            callback(null, client, release);
+          });
+        });
+      } else {
+        // Promise path
+        return (async () => {
+          const client = await origConnect();
+          try {
+            await client.query(sql);
+          } catch (err: any) {
+            console.error('[RLS] set_config error:', err.message);
+          }
+          return client;
+        })();
       }
-      return client;
+    };
     };
 
     console.log('[RLS] pg pool hook registered — row-level security active');
