@@ -164,7 +164,6 @@ export class AppModule implements OnModuleInit {
         })();
       }
     };
-    };
 
     console.log('[RLS] pg pool hook registered — row-level security active');
   }
