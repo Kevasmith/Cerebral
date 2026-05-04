@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
+import ChatSheet from '../components/ChatSheet';
 
 const IS_WEB = Platform.OS === 'web';
 const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
@@ -149,6 +150,7 @@ export default function Accounts({ navigation }) {
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
 
+  const [chatOpen, setChatOpen]       = useState(false);
   const [search, setSearch]           = useState('');
   const [accounts, setAccounts]       = useState([]);
   const [loadingAccounts, setLoading] = useState(true);
@@ -247,7 +249,7 @@ export default function Accounts({ navigation }) {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity style={styles.headerLeft} onPress={() => setChatOpen(true)} activeOpacity={0.75}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
@@ -255,7 +257,7 @@ export default function Accounts({ navigation }) {
             <Text style={[styles.headerBrand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
             <Text style={styles.headerSub}>Intelligence</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
             <View style={styles.bellWrap}>

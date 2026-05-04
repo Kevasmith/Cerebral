@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, Dimensions,
 } from 'react-native';
+import ChatSheet from '../components/ChatSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
@@ -163,6 +164,7 @@ function TxRow({ tx }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function Spending({ navigation }) {
   const insets = useSafeAreaInsets();
+  const [chatOpen, setChatOpen] = useState(false);
   const [patternExpanded, setPatternExpanded] = useState(false);
   const [txns, setTxns] = useState(MOCK_TXN);
 
@@ -176,12 +178,12 @@ export default function Spending({ navigation }) {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity style={styles.headerLeft} onPress={() => setChatOpen(true)} activeOpacity={0.75}>
           <View style={styles.avatar}>
             <Ionicons name="person" size={14} color={C.white} />
           </View>
           <Text style={[styles.headerBrand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
           <Ionicons name="notifications-outline" size={22} color={C.teal} />
         </TouchableOpacity>
@@ -328,6 +330,7 @@ export default function Spending({ navigation }) {
           {txns.map((tx, i) => <TxRow key={tx.id ?? i} tx={tx} />)}
         </View>
       </ScrollView>
+      <ChatSheet visible={chatOpen} onClose={() => setChatOpen(false)} screenKey="spending" />
     </View>
   );
 }

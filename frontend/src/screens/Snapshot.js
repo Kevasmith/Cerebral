@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   RefreshControl, Platform, Dimensions,
 } from 'react-native';
+import ChatSheet from '../components/ChatSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
@@ -182,6 +183,7 @@ export default function Snapshot({ navigation }) {
   const insets   = useSafeAreaInsets();
   const { user } = useAuthStore();
 
+  const [chatOpen,    setChatOpen]    = useState(false);
   const [dashboard,   setDashboard]   = useState(null);
   const [insights,    setInsights]    = useState([]);
   const [transactions, setTx]         = useState([]);
@@ -221,12 +223,12 @@ export default function Snapshot({ navigation }) {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity style={styles.headerLeft} onPress={() => setChatOpen(true)} activeOpacity={0.75}>
           <View style={styles.avatar}>
             <Ionicons name="person" size={14} color={C.white} />
           </View>
           <Text style={[styles.brand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
           <Ionicons name="notifications-outline" size={22} color={C.teal} />
         </TouchableOpacity>
@@ -288,6 +290,7 @@ export default function Snapshot({ navigation }) {
           ))}
         </View>
       </ScrollView>
+      <ChatSheet visible={chatOpen} onClose={() => setChatOpen(false)} screenKey="snapshot" />
     </View>
   );
 }
