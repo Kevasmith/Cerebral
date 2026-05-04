@@ -40,7 +40,7 @@
   <div class="container hero-content">
     <div class="hero-badge glass">
       <span class="pill">New</span>
-      <span class="pill-text">Private beta — Canada · Spring 2026</span>
+      <span class="pill-text">Private beta — Canada| Summer 2026</span>
     </div>
 
     <h1 class="display hero-title" data-blur-text>
@@ -337,7 +337,7 @@
         <span class="brand-mark" style="width:24px;height:24px;border-radius:7px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M3 17l5-6 4 3 5-7 4 5"/></svg>
         </span>
-        © 2026 Cerebral Financial Inc. Built in Canada.
+        © 2026 Cerebral Financial Inc. All rights reserved.
       </div>
       <div class="footer-links">
         <a href="#">Privacy</a>
@@ -422,11 +422,35 @@
 function joinWaitlist(e) {
   e.preventDefault();
   const form = e.target;
-  const email = form.querySelector('input[type=email]').value;
+  const email = form.querySelector('input[type=email]').value.trim();
+  const btn = form.querySelector('button');
   const status = document.getElementById('wl-status');
-  if (status) status.textContent = `You're in. We'll email ${email} when your spot opens.`;
-  form.querySelector('button').textContent = '✓ On the list';
-  form.querySelector('button').style.opacity = 0.7;
+
+  btn.disabled = true;
+  btn.textContent = 'Joining…';
+
+  fetch('https://cerebral-production.up.railway.app/api/v1/waitlist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+    .then(function(res) {
+      if (!res.ok) return res.json().then(function(d) { throw new Error(d.message || 'Error'); });
+      return res.json();
+    })
+    .then(function() {
+      btn.textContent = '✓ You\'re on the list';
+      btn.style.opacity = 0.7;
+      if (status) status.textContent = 'Check your inbox — we\'ll email you when your spot opens.';
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Join the waitlist';
+      if (status) status.textContent = err.message === 'Failed to fetch'
+        ? 'Connection error — please try again.'
+        : (err.message || 'Something went wrong. Please try again.');
+    });
+
   return false;
 }
 </script>

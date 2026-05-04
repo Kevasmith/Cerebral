@@ -3,20 +3,31 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe = require('stripe');
 import { Subscription } from '../../entities/subscription.entity';
+import { posthog } from '../../posthog';
 
 export const PLANS = {
   growth: {
     name: 'Growth',
     price: 900,
     interval: 'month' as const,
-    features: ['Unlimited accounts', 'AI assistant', 'Advanced insights', 'Priority alerts'],
+    features: [
+      'Unlimited accounts',
+      'AI assistant',
+      'Advanced insights',
+      'Priority alerts',
+    ],
     priceId: process.env.STRIPE_GROWTH_PRICE_ID ?? '',
   },
   pro: {
     name: 'Pro',
     price: 1900,
     interval: 'month' as const,
-    features: ['Everything in Growth', 'Predictive insights', 'Premium recommendations', 'Priority support'],
+    features: [
+      'Everything in Growth',
+      'Predictive insights',
+      'Premium recommendations',
+      'Priority support',
+    ],
     priceId: process.env.STRIPE_PRO_PRICE_ID ?? '',
   },
 } as const;
@@ -31,8 +42,11 @@ export class BillingService {
     private readonly subscriptions: Repository<Subscription>,
   ) {
     const key = process.env.STRIPE_SECRET_KEY;
-    this.stripe = key ? new Stripe(key, { apiVersion: '2026-04-22.dahlia' }) : null;
-    if (!key) this.logger.warn('STRIPE_SECRET_KEY not set — billing is disabled');
+    this.stripe = key
+      ? new Stripe(key, { apiVersion: '2026-04-22.dahlia' })
+      : null;
+    if (!key)
+      this.logger.warn('STRIPE_SECRET_KEY not set — billing is disabled');
   }
 
   async createCheckoutSession(
@@ -45,7 +59,10 @@ export class BillingService {
     if (!this.stripe) throw new BadRequestException('Billing not configured');
 
     const { priceId } = PLANS[plan];
-    if (!priceId) throw new BadRequestException(`Price ID not configured for plan: ${plan}`);
+    if (!priceId)
+      throw new BadRequestException(
+        `Price ID not configured for plan: ${plan}`,
+      );
 
     const existing = await this.subscriptions.findOne({ where: { userId } });
 
@@ -68,10 +85,14 @@ export class BillingService {
     return { url: session.url };
   }
 
-  async createPortalSession(userId: string, returnUrl: string): Promise<{ url: string }> {
+  async createPortalSession(
+    userId: string,
+    returnUrl: string,
+  ): Promise<{ url: string }> {
     if (!this.stripe) throw new BadRequestException('Billing not configured');
     const sub = await this.subscriptions.findOne({ where: { userId } });
-    if (!sub?.stripeCustomerId) throw new BadRequestException('No active subscription found');
+    if (!sub?.stripeCustomerId)
+      throw new BadRequestException('No active subscription found');
     const session = await this.stripe.billingPortal.sessions.create({
       customer: sub.stripeCustomerId,
       return_url: returnUrl,
@@ -79,10 +100,16 @@ export class BillingService {
     return { url: session.url };
   }
 
-  async getSubscription(userId: string): Promise<{ plan: string; status: string; currentPeriodEnd: Date | null }> {
+  async getSubscription(
+    userId: string,
+  ): Promise<{ plan: string; status: string; currentPeriodEnd: Date | null }> {
     const sub = await this.subscriptions.findOne({ where: { userId } });
     if (!sub) return { plan: 'free', status: 'active', currentPeriodEnd: null };
-    return { plan: sub.plan, status: sub.status, currentPeriodEnd: sub.currentPeriodEnd };
+    return {
+      plan: sub.plan,
+      status: sub.status,
+      currentPeriodEnd: sub.currentPeriodEnd,
+    };
   }
 
   async handleWebhook(rawBody: Buffer, signature: string): Promise<void> {
@@ -94,9 +121,15 @@ export class BillingService {
 
     let event: any;
     try {
-      event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+      event = this.stripe.webhooks.constructEvent(
+        rawBody,
+        signature,
+        webhookSecret,
+      );
     } catch (err: any) {
-      throw new BadRequestException(`Webhook signature verification failed: ${err.message}`);
+      throw new BadRequestException(
+        `Webhook signature verification failed: ${err.message}`,
+      );
     }
 
     switch (event.type) {
@@ -128,21 +161,36 @@ export class BillingService {
 
     let currentPeriodEnd: Date | null = null;
     if (stripeSubscriptionId && this.stripe) {
-      const stripeSub = await this.stripe.subscriptions.retrieve(stripeSubscriptionId);
+      const stripeSub =
+        await this.stripe.subscriptions.retrieve(stripeSubscriptionId);
       currentPeriodEnd = stripeSub.current_period_end
         ? new Date(stripeSub.current_period_end * 1000)
         : null;
     }
 
     await this.subscriptions.upsert(
-      { userId, stripeCustomerId, stripeSubscriptionId, plan: planKey, status: 'active', currentPeriodEnd },
+      {
+        userId,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        plan: planKey,
+        status: 'active',
+        currentPeriodEnd,
+      },
       ['userId'],
     );
+    posthog.capture({
+      distinctId: userId,
+      event: 'subscription_started',
+      properties: { plan: planKey, stripe_customer_id: stripeCustomerId },
+    });
   }
 
   private async onSubscriptionUpdated(stripeSub: any): Promise<void> {
     const stripeCustomerId = stripeSub.customer as string;
-    const sub = await this.subscriptions.findOne({ where: { stripeCustomerId } });
+    const sub = await this.subscriptions.findOne({
+      where: { stripeCustomerId },
+    });
     if (!sub) return;
 
     const priceId = stripeSub.items?.data?.[0]?.price?.id ?? '';
@@ -161,7 +209,9 @@ export class BillingService {
 
   private async onSubscriptionDeleted(stripeSub: any): Promise<void> {
     const stripeCustomerId = stripeSub.customer as string;
-    const sub = await this.subscriptions.findOne({ where: { stripeCustomerId } });
+    const sub = await this.subscriptions.findOne({
+      where: { stripeCustomerId },
+    });
     if (!sub) return;
     await this.subscriptions.save({
       ...sub,
@@ -169,6 +219,11 @@ export class BillingService {
       status: 'canceled',
       stripeSubscriptionId: null as any,
       currentPeriodEnd: null,
+    });
+    posthog.capture({
+      distinctId: sub.userId,
+      event: 'subscription_cancelled',
+      properties: { previous_plan: sub.plan },
     });
   }
 

@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { IsString, MaxLength } from 'class-validator';
 import { Throttle } from '@nestjs/throttler';
 import { AccountsService } from './accounts.service';
 import { UsersService } from '../users/users.service';
 import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { posthog } from '../../posthog';
 
 class SyncBankDto {
   @IsString()
@@ -34,6 +35,15 @@ export class AccountsController {
     return this.accountsService.getDashboardSnapshot(profile.id);
   }
 
+  @Get('plan-preview')
+  async getPlanPreview(
+    @CurrentUser() user: { id: string },
+    @Query('goal') goal: string,
+  ) {
+    const profile = await this.usersService.findByBetterAuthId(user.id);
+    return this.accountsService.generatePlanPreview(profile.id, goal);
+  }
+
   @Get('connect-url')
   getConnectUrl() {
     return { url: this.accountsService.getConnectUrl(FLINKS_REDIRECT_URL) };
@@ -47,6 +57,17 @@ export class AccountsController {
     @Body() body: SyncBankDto,
   ) {
     const profile = await this.usersService.findByBetterAuthId(user.id);
-    return this.accountsService.syncFromLoginId(profile.id, body.loginId);
+    const result = await this.accountsService.syncFromLoginId(
+      profile.id,
+      body.loginId,
+    );
+    posthog.capture({
+      distinctId: user.id,
+      event: 'bank_account_synced',
+      properties: {
+        accounts_synced: Array.isArray(result) ? result.length : undefined,
+      },
+    });
+    return result;
   }
 }

@@ -19,6 +19,7 @@ import {
   AccountIdParamDto,
   TransactionIdParamDto,
 } from './dto/transaction-query.dto';
+import { posthog } from '../../posthog';
 
 @Controller('transactions')
 @UseGuards(BetterAuthGuard)
@@ -73,9 +74,19 @@ export class TransactionsController {
 
   @Patch(':id/category')
   async updateTransactionCategory(
+    @CurrentUser() user: { id: string },
     @Param() params: TransactionIdParamDto,
     @Body() body: UpdateCategoryDto,
   ): Promise<Transaction> {
-    return this.transactionsService.updateTransactionCategory(params.id, body.category);
+    const result = await this.transactionsService.updateTransactionCategory(
+      params.id,
+      body.category,
+    );
+    posthog.capture({
+      distinctId: user.id,
+      event: 'transaction_category_updated',
+      properties: { transaction_id: params.id, new_category: body.category },
+    });
+    return result;
   }
 }

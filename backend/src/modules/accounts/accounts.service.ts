@@ -6,6 +6,7 @@ import { Transaction } from '../../entities/transaction.entity';
 import { FlinksService } from '../flinks/flinks.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { FlinksAccount } from '../flinks/flinks.types';
+import { UserGoal } from '../../entities/preference.entity';
 
 @Injectable()
 export class AccountsService {
@@ -66,6 +67,112 @@ export class AccountsService {
     account.lastSyncedAt = new Date();
 
     return this.accountRepo.save(account);
+  }
+
+  async generatePlanPreview(userId: string, goal: string): Promise<{
+    bankName: string | null;
+    savings: { label: string; amount: string; icon: string }[];
+    guardrail: { category: string; pct: number; note: string };
+    years: string;
+    probability: string;
+  }> {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+    const [accounts, spendingByCategory, trend] = await Promise.all([
+      this.accountRepo.find({ where: { userId } }),
+      this.transactionsService.getCategorySpending(userId, thirtyDaysAgo, now),
+      this.getSpendingTrend(userId),
+    ]);
+
+    // Liquid assets: checking + savings with positive balances only
+    const liquidBalance = accounts
+      .filter(a => [AccountType.CHECKING, AccountType.SAVINGS].includes(a.accountType))
+      .reduce((sum, a) => sum + Math.max(0, Number(a.balance)), 0);
+
+    // Primary bank name from first non-credit account
+    const primaryAccount = accounts.find(a => a.accountType !== AccountType.CREDIT);
+    const bankName = primaryAccount?.institutionName ?? null;
+
+    // Monthly savings capacity: estimate income from spending, target 25% savings rate
+    // If no transaction data, fall back to a sensible Canadian default
+    const monthlySpend = trend.currentMonth || 0;
+    const estimatedIncome = monthlySpend > 0 ? monthlySpend / 0.70 : 0;
+    const rawCapacity = estimatedIncome > 0 ? estimatedIncome * 0.25 : 1200;
+    const monthlyCapacity = Math.max(rawCapacity, 300);
+
+    // Top discretionary spending category for the guardrail
+    const DISCRETIONARY = ['food', 'entertainment', 'shopping', 'travel'];
+    const CATEGORY_LABELS: Record<string, string> = {
+      food: 'Dining & Food', entertainment: 'Entertainment',
+      shopping: 'Shopping', travel: 'Travel', bills: 'Bills & Utilities',
+    };
+    const topDiscretionary = spendingByCategory.find(c => DISCRETIONARY.includes(c.category));
+    const guardrailCategory = topDiscretionary
+      ? (CATEGORY_LABELS[topDiscretionary.category] ?? topDiscretionary.category)
+      : 'Dining & Entertainment';
+
+    // Goal-specific allocations and targets (CAD)
+    const GOAL_CONFIGS: Record<string, {
+      alloc: [number, string, string][];
+      guardPct: number;
+      guardNote: string;
+      targetAmount: number;
+    }> = {
+      save_for_house:  {
+        alloc: [[0.65, 'DOWN PAYMENT FUND', 'home-outline'], [0.35, 'EMERGENCY FUND', 'shield-outline']],
+        guardPct: 12, guardNote: 'Suggested reduction based on peers with similar savings goals.',
+        targetAmount: 100_000,
+      },
+      retire_early: {
+        alloc: [[0.70, 'INDEX FUNDS', 'trending-up-outline'], [0.30, 'EMERGENCY FUND', 'shield-outline']],
+        guardPct: 15, guardNote: 'Suggested reduction based on peers with similar growth targets.',
+        targetAmount: 1_200_000,
+      },
+      optimize_taxes: {
+        alloc: [[0.60, 'RRSP CONTRIBUTION', 'trending-up-outline'], [0.40, 'TFSA ALLOCATION', 'shield-outline']],
+        guardPct: 20, guardNote: 'Optimizing recurring expenses improves your taxable income position.',
+        targetAmount: 70_000,
+      },
+      emergency_fund: {
+        alloc: [[0.75, 'EMERGENCY FUND', 'shield-outline'], [0.25, 'SAVINGS BUFFER', 'wallet-outline']],
+        guardPct: 18, guardNote: 'Cutting recurring expenses accelerates your safety net.',
+        targetAmount: 18_000,
+      },
+      custom: {
+        alloc: [[0.65, 'PRIMARY ALLOCATION', 'trending-up-outline'], [0.35, 'EMERGENCY FUND', 'shield-outline']],
+        guardPct: 10, guardNote: 'Suggested reduction to accelerate your custom goal timeline.',
+        targetAmount: 50_000,
+      },
+    };
+
+    const config = GOAL_CONFIGS[goal] ?? GOAL_CONFIGS.retire_early;
+
+    // Round to nearest $50 for clean display
+    const roundNice = (n: number) => Math.max(50, Math.round(n / 50) * 50);
+    const fmt = (n: number) => `$${n.toLocaleString('en-CA')}/mo`;
+
+    const savings = config.alloc.map(([pct, label, icon]) => ({
+      label, icon, amount: fmt(roundNice(monthlyCapacity * pct)),
+    }));
+
+    // Years to goal
+    const remaining = Math.max(0, config.targetAmount - liquidBalance);
+    const annualSavings = monthlyCapacity * 12;
+    const rawYears = annualSavings > 0 ? remaining / annualSavings : 99;
+    const years = Math.min(rawYears, 40).toFixed(1);
+
+    const probability = rawYears < 15 ? 'HIGH PROBABILITY'
+      : rawYears < 25 ? 'MODERATE PROBABILITY'
+      : 'ON TRACK';
+
+    return {
+      bankName,
+      savings,
+      guardrail: { category: guardrailCategory, pct: config.guardPct, note: config.guardNote },
+      years,
+      probability,
+    };
   }
 
   private mapAccountType(flinksType: string): AccountType {

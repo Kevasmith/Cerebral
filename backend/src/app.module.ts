@@ -58,6 +58,12 @@ import { rlsContext } from './common/rls/rls-context';
           entities,
           synchronize,
           logging: process.env.NODE_ENV === 'development',
+          extra: {
+            connectionTimeoutMillis: 5000,  // fail fast if pool is exhausted
+            idleTimeoutMillis: 60_000,      // close idle connections after 60s (before Railway drops them)
+            keepAlive: true,                // TCP keepalive detects silently dropped connections
+            keepAliveInitialDelayMillis: 10_000,
+          },
         };
 
         // Prefer full DATABASE_URL when provided (Railway)
@@ -65,7 +71,7 @@ import { rlsContext } from './common/rls/rls-context';
           base.url = db?.url || process.env.DATABASE_URL;
           // Optionally enable SSL if requested (set DATABASE_SSL=true)
           if (process.env.DATABASE_SSL === 'true') {
-            base.extra = { ssl: { rejectUnauthorized: false } };
+            base.extra = { ...base.extra, ssl: { rejectUnauthorized: false } };
           }
         } else {
           base.host = db?.host || config.get('database.host');

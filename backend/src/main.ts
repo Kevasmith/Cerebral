@@ -5,11 +5,15 @@ import { AppModule } from './app.module';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth/auth';
 import { Pool } from 'pg';
+import { posthog } from './posthog';
+import { PostHogExceptionFilter } from './common/filters/posthog-exception.filter';
 
 async function runBetterAuthMigrations() {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ...(process.env.DATABASE_SSL === 'true' && { ssl: { rejectUnauthorized: false } }),
+    ...(process.env.DATABASE_SSL === 'true' && {
+      ssl: { rejectUnauthorized: false },
+    }),
   });
   try {
     await pool.query(`
@@ -125,8 +129,14 @@ async function bootstrap() {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+      res.setHeader(
+        'Access-Control-Allow-Methods',
+        'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      );
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Authorization, Content-Type',
+      );
     }
 
     if (req.method === 'OPTIONS') {
@@ -140,6 +150,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
+  app.useGlobalFilters(new PostHogExceptionFilter());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -150,13 +162,18 @@ async function bootstrap() {
 
   const corsOrigin = process.env.CORS_ORIGIN;
   if (isProd && !corsOrigin) {
-    logger.warn('CORS_ORIGIN is not set in production — defaulting to * which allows all origins. Set CORS_ORIGIN to your frontend URL.');
+    logger.warn(
+      'CORS_ORIGIN is not set in production — defaulting to * which allows all origins. Set CORS_ORIGIN to your frontend URL.',
+    );
   }
 
   // CORS_ORIGIN supports comma-separated values for multiple allowed origins
   // e.g. "https://app.cerebral.ca,https://cerebral.ca"
   const allowedOrigins = corsOrigin
-    ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean)
+    ? corsOrigin
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean)
     : null;
 
   app.enableCors({
@@ -166,7 +183,9 @@ async function bootstrap() {
           if (!origin || allowedOrigins.includes(origin)) cb(null, true);
           else cb(new Error(`CORS: ${origin} not allowed`));
         }
-      : isProd ? false : '*',
+      : isProd
+        ? false
+        : '*',
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type'],
     credentials: true,
@@ -175,6 +194,15 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   logger.log(`Cerebral API running on http://localhost:${port}/api/v1`);
+
+  process.on('SIGINT', async () => {
+    await posthog.shutdown();
+    process.exit(0);
+  });
+  process.on('SIGTERM', async () => {
+    await posthog.shutdown();
+    process.exit(0);
+  });
 }
 
 bootstrap();

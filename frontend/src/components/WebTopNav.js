@@ -1,13 +1,12 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const TABS = [
-  { name: 'Home',          label: 'Home',    icon: 'home',                  iconOut: 'home-outline' },
-  { name: 'Opportunities', label: 'Explore', icon: 'compass',               iconOut: 'compass-outline' },
-  { name: 'Transactions',  label: 'Spend',   icon: 'card',                  iconOut: 'card-outline' },
-  { name: 'Chat',          label: 'Ask AI',  icon: 'chatbubble-ellipses',   iconOut: 'chatbubble-ellipses-outline' },
-  { name: 'Profile',       label: 'Profile', icon: 'person',                iconOut: 'person-outline' },
+  { name: 'Snapshot', label: 'Snapshot', icon: 'pulse',       iconOut: 'pulse-outline'       },
+  { name: 'Spending', label: 'Spending', icon: 'card',        iconOut: 'card-outline'        },
+  { name: 'Savings',  label: 'Savings',  icon: 'trending-up', iconOut: 'trending-up-outline' },
+  { name: 'Accounts', label: 'Accounts', icon: 'person',      iconOut: 'person-outline'      },
 ];
 
 export default function WebTopNav({ state, navigation }) {
@@ -34,7 +33,7 @@ export default function WebTopNav({ state, navigation }) {
                 <Ionicons
                   name={active ? tab.icon : tab.iconOut}
                   size={15}
-                  color={active ? '#fff' : 'rgba(255,255,255,0.5)'}
+                  color={active ? '#10C896' : 'rgba(255,255,255,0.45)'}
                 />
                 <Text style={[styles.label, active && styles.labelActive]}>
                   {tab.label}
@@ -50,9 +49,9 @@ export default function WebTopNav({ state, navigation }) {
 
 const styles = StyleSheet.create({
   bar: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#080E14',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomColor: 'rgba(255,255,255,0.07)',
   },
   inner: {
     flexDirection: 'row',
@@ -69,7 +68,9 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 7,
-    backgroundColor: '#0a9165',
+    backgroundColor: 'rgba(16,200,150,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(16,200,150,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 8,
   },
-  tabActive: { backgroundColor: 'rgba(255,255,255,0.1)' },
-  label:      { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
-  labelActive:{ color: '#fff' },
+  tabActive: { backgroundColor: 'rgba(16,200,150,0.1)', borderWidth: 1, borderColor: 'rgba(16,200,150,0.2)' },
+  label:       { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.45)' },
+  labelActive: { color: '#10C896' },
 });

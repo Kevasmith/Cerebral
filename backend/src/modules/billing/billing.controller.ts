@@ -1,12 +1,20 @@
 import {
-  Controller, Post, Get, Body, UseGuards,
-  Headers, Req, HttpCode, HttpStatus,
+  Controller,
+  Post,
+  Get,
+  Body,
+  UseGuards,
+  Headers,
+  Req,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { IsEnum, IsUrl } from 'class-validator';
 import { Request } from 'express';
 import { BillingService, PLANS } from './billing.service';
 import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { posthog } from '../../posthog';
 
 class CreateCheckoutDto {
   @IsEnum(Object.keys(PLANS))
@@ -34,7 +42,19 @@ export class BillingController {
     @CurrentUser() user: { id: string; email: string },
     @Body() dto: CreateCheckoutDto,
   ) {
-    return this.billing.createCheckoutSession(dto.plan, user.id, user.email, dto.successUrl, dto.cancelUrl);
+    const result = await this.billing.createCheckoutSession(
+      dto.plan,
+      user.id,
+      user.email,
+      dto.successUrl,
+      dto.cancelUrl,
+    );
+    posthog.capture({
+      distinctId: user.id,
+      event: 'checkout_initiated',
+      properties: { plan: dto.plan },
+    });
+    return result;
   }
 
   @Post('portal')
@@ -43,7 +63,12 @@ export class BillingController {
     @CurrentUser() user: { id: string },
     @Body() dto: CreatePortalDto,
   ) {
-    return this.billing.createPortalSession(user.id, dto.returnUrl);
+    const result = await this.billing.createPortalSession(
+      user.id,
+      dto.returnUrl,
+    );
+    posthog.capture({ distinctId: user.id, event: 'billing_portal_opened' });
+    return result;
   }
 
   @Get('subscription')

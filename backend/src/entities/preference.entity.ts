@@ -11,8 +11,14 @@ import { User } from './user.entity';
 import { encryptedTransformer } from '../common/crypto/column-encryption';
 
 export enum UserGoal {
-  SAVE_MORE = 'save_more',
-  MAKE_MORE = 'make_more',
+  SAVE_FOR_HOUSE  = 'save_for_house',
+  RETIRE_EARLY    = 'retire_early',
+  OPTIMIZE_TAXES  = 'optimize_taxes',
+  EMERGENCY_FUND  = 'emergency_fund',
+  CUSTOM          = 'custom',
+  // kept for backward compat with existing rows
+  SAVE_MORE       = 'save_more',
+  MAKE_MORE       = 'make_more',
   LEARN_INVESTING = 'learn_investing',
 }
 
@@ -31,8 +37,8 @@ export class Preference {
   @Column()
   userId: string;
 
-  @Column({ type: 'enum', enum: UserGoal, default: UserGoal.SAVE_MORE })
-  goal: UserGoal;
+  @Column({ type: 'enum', enum: UserGoal, nullable: true, default: null })
+  goal: UserGoal | null;
 
   @Column({ type: 'simple-array', nullable: true })
   interests: UserInterest[];

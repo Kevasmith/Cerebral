@@ -4,6 +4,7 @@ import { ChatService } from './chat.service';
 import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ChatMessageDto } from './dto/chat-message.dto';
+import { posthog } from '../../posthog';
 
 @Controller('chat')
 @UseGuards(BetterAuthGuard)
@@ -18,6 +19,11 @@ export class ChatController {
     @Body() dto: ChatMessageDto,
   ) {
     const reply = await this.chatService.ask(user.id, dto.message);
+    posthog.capture({
+      distinctId: user.id,
+      event: 'chat_message_sent',
+      properties: { message_length: dto.message.length },
+    });
     return { reply };
   }
 }

@@ -31,7 +31,7 @@ export class UsersService {
       await this.preferenceRepo.save(
         this.preferenceRepo.create({
           userId: user.id,
-          goal: UserGoal.SAVE_MORE,
+          goal: null,
           interests: [],
           location: dto.location,
         }),
@@ -59,7 +59,7 @@ export class UsersService {
   async updatePreferences(userId: string, dto: UpdatePreferencesDto): Promise<Preference> {
     let pref = await this.preferenceRepo.findOne({ where: { userId } });
     if (!pref) {
-      pref = this.preferenceRepo.create({ userId, goal: UserGoal.SAVE_MORE });
+      pref = this.preferenceRepo.create({ userId, goal: null });
     }
     Object.assign(pref, dto);
     return this.preferenceRepo.save(pref);

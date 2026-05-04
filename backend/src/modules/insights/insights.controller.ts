@@ -5,6 +5,7 @@ import { InsightsService } from './insights.service';
 import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
+import { posthog } from '../../posthog';
 
 class InsightIdParamDto {
   @IsUUID()
@@ -24,7 +25,15 @@ export class InsightsController {
   @Post('refresh')
   async refresh(@CurrentUser() user: { id: string }) {
     const profile = await this.usersService.findByBetterAuthId(user.id);
-    return this.insightsService.refreshAndGetInsights(profile.id);
+    const result = await this.insightsService.refreshAndGetInsights(profile.id);
+    posthog.capture({
+      distinctId: user.id,
+      event: 'insights_refreshed',
+      properties: {
+        insights_count: Array.isArray(result) ? result.length : undefined,
+      },
+    });
+    return result;
   }
 
   // Get active (non-expired) insights without re-running engine
@@ -48,6 +57,11 @@ export class InsightsController {
   ) {
     const profile = await this.usersService.findByBetterAuthId(user.id);
     await this.insightsService.markRead(params.id, profile.id);
+    posthog.capture({
+      distinctId: user.id,
+      event: 'insight_read',
+      properties: { insight_id: params.id },
+    });
     return { success: true };
   }
 

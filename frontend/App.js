@@ -19,11 +19,14 @@ import Transactions from './src/screens/Transactions';
 import Opportunities from './src/screens/Opportunities';
 import Chat from './src/screens/Chat';
 import Profile from './src/screens/Profile';
+import Accounts from './src/screens/Accounts';
+import Settings from './src/screens/Settings';
 import Upgrade from './src/screens/Upgrade';
 import BillingSuccess from './src/screens/BillingSuccess';
 import InsightDetail from './src/screens/InsightDetail';
 import ConnectBank from './src/screens/ConnectBank';
 import Snapshot from './src/screens/Snapshot';
+import Spending from './src/screens/Spending';
 import Savings from './src/screens/Savings';
 
 const WEB_MAX_WIDTH = 960;
@@ -44,12 +47,12 @@ function webScreen(Component, bg) {
   return Screen;
 }
 
-// All screens use dark navy as the gutter bg so it's flush with the nav bar
-const DashboardScreen     = webScreen(Dashboard,     '#0F172A');
-const OpportunitiesScreen = webScreen(Opportunities, '#0F172A');
-const TransactionsScreen  = webScreen(Transactions,  '#0F172A');
-const ChatScreen          = webScreen(Chat,          '#0F172A');
-const ProfileScreen       = webScreen(Profile,       '#0F172A');
+// All screens use dark bg to match the new dark theme nav bar
+const SnapshotScreen  = webScreen(Snapshot,  '#080E14');
+const SpendingScreen  = webScreen(Spending,  '#080E14');
+const SavingsScreen   = webScreen(Savings,   '#080E14');
+const ProfileScreen   = webScreen(Profile,   '#080E14');
+const AccountsScreen  = webScreen(Accounts,  '#080E14');
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -60,27 +63,25 @@ function MainTabs() {
       tabBar={IS_WEB ? (props) => <WebTopNav {...props} /> : undefined}
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: '#0F172A',
-        tabBarInactiveTintColor: '#aaa',
-        tabBarStyle: { backgroundColor: '#FBF9F4', borderTopColor: '#ECE8DC' },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarActiveTintColor: '#10C896',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.4)',
+        tabBarStyle: { backgroundColor: '#080E14', borderTopColor: 'rgba(255,255,255,0.07)' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = {
-            Home:          focused ? 'home'                : 'home-outline',
-            Opportunities: focused ? 'compass'             : 'compass-outline',
-            Transactions:  focused ? 'card'                : 'card-outline',
-            Chat:          focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline',
-            Profile:       focused ? 'person'              : 'person-outline',
+            Snapshot: focused ? 'pulse'         : 'pulse-outline',
+            Spending: focused ? 'card'           : 'card-outline',
+            Savings:  focused ? 'trending-up'    : 'trending-up-outline',
+            Accounts: focused ? 'wallet'          : 'wallet-outline',
           };
           return <Ionicons name={icons[route.name]} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Home"          component={DashboardScreen}     options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Opportunities" component={OpportunitiesScreen} options={{ tabBarLabel: 'Explore' }} />
-      <Tab.Screen name="Transactions"  component={TransactionsScreen}  options={{ tabBarLabel: 'Spend' }} />
-      <Tab.Screen name="Chat"          component={ChatScreen}          options={{ tabBarLabel: 'Ask AI' }} />
-      <Tab.Screen name="Profile"       component={ProfileScreen}       options={{ tabBarLabel: 'Profile' }} />
+      <Tab.Screen name="Snapshot" component={SnapshotScreen} options={{ tabBarLabel: 'Snapshot' }} />
+      <Tab.Screen name="Spending" component={SpendingScreen} options={{ tabBarLabel: 'Spending' }} />
+      <Tab.Screen name="Savings"  component={SavingsScreen}  options={{ tabBarLabel: 'Savings'  }} />
+      <Tab.Screen name="Accounts" component={AccountsScreen} options={{ tabBarLabel: 'Accounts' }} />
     </Tab.Navigator>
   );
 }
@@ -95,7 +96,7 @@ const linking = {
 };
 
 export default function App() {
-  const { user, isLoading, isOnboarded, init } = useAuthStore();
+  const { user, isLoading, isOnboarded, profileFetched, init } = useAuthStore();
   const fetchBilling = useBillingStore((s) => s.fetch);
   const resetBilling = useBillingStore((s) => s.reset);
   const notificationListener = useRef();
@@ -139,10 +140,12 @@ export default function App() {
       .catch(() => {});
   }, [user]);
 
-  if (isLoading) {
+  // Hold the loading screen until we know the user AND their onboarding state.
+  // Without this gate, returning users briefly see Onboarding while fetchProfile runs.
+  if (isLoading || (user && !profileFetched)) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F4F2EC' }}>
-        <ActivityIndicator size="large" color="#0F172A" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#080E14' }}>
+        <ActivityIndicator size="large" color="#10C896" />
       </View>
     );
   }
@@ -163,6 +166,7 @@ export default function App() {
               <Stack.Screen name="BillingSuccess" component={BillingSuccess} options={{ animation: 'fade' }} />
               <Stack.Screen name="InsightDetail" component={InsightDetail} options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="ConnectBank" component={ConnectBank} options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="Settings" component={Settings} options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="Snapshot" component={Snapshot} options={{ animation: 'fade' }} />
               <Stack.Screen name="Savings" component={Savings} options={{ animation: 'fade' }} />
             </>

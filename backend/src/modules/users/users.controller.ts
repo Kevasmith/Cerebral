@@ -1,9 +1,24 @@
-import { Controller, Get, Post, Patch, Delete, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { IsString, MaxLength } from 'class-validator';
 import { UsersService } from './users.service';
 import { BetterAuthGuard } from '../../common/guards/better-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { RegisterDto, UpdatePreferencesDto, UpdateProfileDto } from './dto/onboarding.dto';
+import {
+  RegisterDto,
+  UpdatePreferencesDto,
+  UpdateProfileDto,
+} from './dto/onboarding.dto';
+import { posthog } from '../../posthog';
 
 class PushTokenDto {
   @IsString()
@@ -21,11 +36,28 @@ export class UsersController {
     @CurrentUser() user: { id: string; email: string; name?: string },
     @Body() dto: RegisterDto,
   ) {
-    return this.usersService.upsert(user.id, {
+    const profile = await this.usersService.upsert(user.id, {
       email: dto.email ?? user.email,
       displayName: dto.displayName ?? user.name,
       location: dto.location,
     });
+    posthog.identify({
+      distinctId: user.id,
+      properties: {
+        $set: {
+          email: dto.email ?? user.email,
+          name: dto.displayName ?? user.name,
+          location: dto.location,
+        },
+        $set_once: { first_registered_at: new Date().toISOString() },
+      },
+    });
+    posthog.capture({
+      distinctId: user.id,
+      event: 'user_registered',
+      properties: { email: dto.email ?? user.email, location: dto.location },
+    });
+    return profile;
   }
 
   @Get('me')
@@ -38,7 +70,13 @@ export class UsersController {
     @CurrentUser() user: { id: string },
     @Body() body: UpdateProfileDto,
   ) {
-    return this.usersService.updateProfile(user.id, body);
+    const result = await this.usersService.updateProfile(user.id, body);
+    posthog.capture({
+      distinctId: user.id,
+      event: 'user_profile_updated',
+      properties: { updated_fields: Object.keys(body) },
+    });
+    return result;
   }
 
   @Get('me/preferences')
@@ -60,6 +98,7 @@ export class UsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAccount(@CurrentUser() user: { id: string }) {
     await this.usersService.deleteAccount(user.id);
+    posthog.capture({ distinctId: user.id, event: 'account_deleted' });
   }
 
   @Patch('me/preferences')
@@ -77,6 +116,12 @@ export class UsersController {
         displayName: user.name,
       });
     }
-    return this.usersService.updatePreferences(profile.id, dto);
+    const result = await this.usersService.updatePreferences(profile.id, dto);
+    posthog.capture({
+      distinctId: user.id,
+      event: 'user_preferences_updated',
+      properties: { goal: dto.goal, updated_fields: Object.keys(dto) },
+    });
+    return result;
   }
 }
