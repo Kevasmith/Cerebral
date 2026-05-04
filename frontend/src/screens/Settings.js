@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Switch, ActivityIndicator, Alert, Platform, TextInput,
@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useAuthStore from '../store/authStore';
+import useBillingStore from '../store/billingStore';
 
 const IS_WEB = Platform.OS === 'web';
 
@@ -23,6 +24,9 @@ const C = {
   red:        '#EF6C55',
   redDim:     'rgba(239,108,85,0.12)',
   redBorder:  'rgba(239,108,85,0.3)',
+  gold:       '#F5C842',
+  goldDim:    'rgba(245,200,66,0.12)',
+  goldBorder: 'rgba(245,200,66,0.35)',
 };
 
 function memberSince(profile) {
@@ -114,10 +118,14 @@ export default function Settings({ navigation }) {
   const insets = useSafeAreaInsets();
   const { profile, preferences, signOut, updateDisplayName, updateNotifications, deleteAccount } = useAuthStore();
 
+  const { plan, fetch: fetchBilling } = useBillingStore();
+
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [signingOut, setSigningOut]           = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [togglingNotif, setTogglingNotif]     = useState(false);
+
+  useEffect(() => { fetchBilling(); }, []);
 
   const initial  = profile?.displayName?.[0]?.toUpperCase() ?? 'C';
   const sinceYear = memberSince(profile);
@@ -200,6 +208,54 @@ export default function Settings({ navigation }) {
             >
               <Text style={[styles.editProfileText, IS_WEB && { fontFamily: 'Geist' }]}>Edit Profile</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* ── Your Plan ────────────────────────────────────────────────── */}
+          <Text style={[styles.sectionLabel, IS_WEB && { fontFamily: 'Geist' }]}>Your Plan</Text>
+          <View style={styles.planCard}>
+            <View style={styles.planLeft}>
+              <View style={[
+                styles.planBadge,
+                plan === 'pro'    && { backgroundColor: C.goldDim,  borderColor: C.goldBorder },
+                plan === 'growth' && { backgroundColor: C.tealDim,  borderColor: C.tealBorder },
+                plan === 'free'   && { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: C.border },
+              ]}>
+                <Text style={[
+                  styles.planBadgeText,
+                  plan === 'pro'    && { color: C.gold },
+                  plan === 'growth' && { color: C.teal },
+                  plan === 'free'   && { color: C.muted },
+                ]}>
+                  {plan === 'free' ? 'Free' : plan === 'growth' ? 'Growth' : 'Pro'}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.planName}>
+                  {plan === 'free'   ? 'Free Plan' :
+                   plan === 'growth' ? 'Growth Plan' : 'Pro Plan'}
+                </Text>
+                <Text style={styles.planSub}>
+                  {plan === 'free' ? 'Upgrade to unlock AI features' : 'Active subscription'}
+                </Text>
+              </View>
+            </View>
+            {plan === 'free' ? (
+              <TouchableOpacity
+                style={styles.upgradeBtn}
+                onPress={() => navigation?.navigate?.('Upgrade')}
+                activeOpacity={0.82}
+              >
+                <Text style={styles.upgradeBtnText}>Upgrade</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.manageBtn}
+                onPress={() => navigation?.navigate?.('Upgrade')}
+                activeOpacity={0.82}
+              >
+                <Text style={styles.manageBtnText}>Manage</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* ── General Settings ─────────────────────────────────────────── */}
@@ -363,6 +419,33 @@ const styles = StyleSheet.create({
     fontSize: 18, fontWeight: '800', color: C.white,
     marginBottom: 14,
   },
+
+  // Plan card
+  planCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border,
+    paddingHorizontal: 16, paddingVertical: 14,
+    marginBottom: 24,
+  },
+  planLeft:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  planBadge: {
+    borderRadius: 8, borderWidth: 1,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  planBadgeText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.4 },
+  planName:      { fontSize: 14, fontWeight: '800', color: C.white },
+  planSub:       { fontSize: 12, color: C.muted, marginTop: 2 },
+  upgradeBtn: {
+    backgroundColor: C.teal, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  upgradeBtnText: { fontSize: 13, fontWeight: '800', color: '#080E14' },
+  manageBtn: {
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10,
+    borderWidth: 1, borderColor: C.border,
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  manageBtnText: { fontSize: 13, fontWeight: '700', color: C.muted },
 
   // Settings card
   settingsCard: {

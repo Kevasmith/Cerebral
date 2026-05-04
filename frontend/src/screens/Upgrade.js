@@ -12,12 +12,25 @@ import {
   restorePurchases, isNativePurchasesAvailable,
 } from '../utils/purchases';
 
-const IS_WEB = Platform.OS === 'web';
+const IS_WEB    = Platform.OS === 'web';
 const IS_NATIVE = !IS_WEB;
 
-const WEB_GRADIENT = IS_WEB
-  ? { backgroundImage: 'linear-gradient(145deg, #0F172A 0%, #0b2018 40%, #085c3a 75%, #0a9165 100%)' }
-  : {};
+const C = {
+  bg:         '#080E14',
+  card:       '#0D1520',
+  cardHi:     '#111C2A',
+  teal:       '#10C896',
+  tealDim:    'rgba(16,200,150,0.12)',
+  tealBorder: 'rgba(16,200,150,0.30)',
+  gold:       '#F5C842',
+  goldDim:    'rgba(245,200,66,0.12)',
+  goldBorder: 'rgba(245,200,66,0.35)',
+  white:      '#FFFFFF',
+  muted:      'rgba(255,255,255,0.55)',
+  faint:      'rgba(255,255,255,0.25)',
+  border:     'rgba(255,255,255,0.07)',
+  red:        '#EF4444',
+};
 
 const PLANS = [
   {
@@ -26,11 +39,13 @@ const PLANS = [
     name: 'Growth',
     price: '$9',
     period: '/month',
-    color: '#0a9165',
     tagline: 'For the financially aware',
+    color: C.teal,
+    dim: C.tealDim,
+    border: C.tealBorder,
     features: [
       'Unlimited connected accounts',
-      'AI assistant (Cerebral AI)',
+      'Cerebral AI assistant',
       'Advanced spending insights',
       'Priority alerts & notifications',
     ],
@@ -41,8 +56,10 @@ const PLANS = [
     name: 'Pro',
     price: '$19',
     period: '/month',
-    color: '#7C3AED',
     tagline: 'For the financially ambitious',
+    color: C.gold,
+    dim: C.goldDim,
+    border: C.goldBorder,
     popular: true,
     features: [
       'Everything in Growth',
@@ -54,46 +71,46 @@ const PLANS = [
 ];
 
 function PlanCard({ plan, rcPackage, loading, onSelect }) {
-  const displayPrice = rcPackage
-    ? rcPackage.product.priceString
-    : plan.price;
+  const displayPrice = rcPackage ? rcPackage.product.priceString : plan.price;
 
   return (
-    <View style={[styles.card, plan.popular && styles.cardPopular, { borderColor: plan.color + '44' }]}>
+    <View style={[s.card, plan.popular && { borderColor: plan.border, backgroundColor: C.cardHi }]}>
       {plan.popular && (
-        <View style={[styles.popularBadge, { backgroundColor: plan.color }]}>
-          <Text style={styles.popularText}>Most Popular</Text>
+        <View style={[s.popularBadge, { backgroundColor: plan.dim, borderColor: plan.border }]}>
+          <Ionicons name="flash" size={11} color={plan.color} />
+          <Text style={[s.popularText, { color: plan.color }]}>Most Popular</Text>
         </View>
       )}
-      <View style={styles.cardHeader}>
+
+      <View style={s.cardHeader}>
         <View>
-          <Text style={styles.planName}>{plan.name}</Text>
-          <Text style={styles.planTagline}>{plan.tagline}</Text>
+          <Text style={[s.planName, { color: plan.color }]}>{plan.name}</Text>
+          <Text style={s.planTagline}>{plan.tagline}</Text>
         </View>
-        <View style={styles.priceWrap}>
-          <Text style={[styles.price, { color: plan.color }]}>{displayPrice}</Text>
-          <Text style={styles.period}>/month</Text>
+        <View style={s.priceWrap}>
+          <Text style={[s.price, { color: plan.color }]}>{displayPrice}</Text>
+          <Text style={s.period}>/mo</Text>
         </View>
       </View>
 
-      <View style={styles.featureList}>
-        {plan.features.map((f, i) => (
-          <View key={i} style={styles.featureRow}>
-            <Ionicons name="checkmark-circle" size={16} color={plan.color} style={{ marginRight: 8 }} />
-            <Text style={styles.featureText}>{f}</Text>
+      <View style={s.featureList}>
+        {plan.features.map((f) => (
+          <View key={f} style={s.featureRow}>
+            <Ionicons name="checkmark" size={14} color={plan.color} style={s.featureIcon} />
+            <Text style={s.featureText}>{f}</Text>
           </View>
         ))}
       </View>
 
       <TouchableOpacity
-        style={[styles.selectBtn, { backgroundColor: plan.color }]}
+        style={[s.selectBtn, { backgroundColor: plan.color }]}
         onPress={() => onSelect(plan, rcPackage)}
         disabled={loading === plan.key}
-        activeOpacity={0.8}
+        activeOpacity={0.82}
       >
         {loading === plan.key
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.selectBtnText}>Get {plan.name}</Text>
+          ? <ActivityIndicator color={C.bg} />
+          : <Text style={s.selectBtnText}>Get {plan.name}</Text>
         }
       </TouchableOpacity>
     </View>
@@ -101,9 +118,9 @@ function PlanCard({ plan, rcPackage, loading, onSelect }) {
 }
 
 export default function Upgrade({ navigation }) {
-  const [loading, setLoading] = useState(null);
-  const [restoring, setRestoring] = useState(false);
-  const [error, setError] = useState('');
+  const [loading,    setLoading]    = useState(null);
+  const [restoring,  setRestoring]  = useState(false);
+  const [error,      setError]      = useState('');
   const [rcOffering, setRcOffering] = useState(null);
   const { profile } = useAuthStore();
   const insets = useSafeAreaInsets();
@@ -128,7 +145,6 @@ export default function Upgrade({ navigation }) {
     setLoading(plan.key);
     try {
       if (IS_NATIVE && isNativePurchasesAvailable() && rcPackage) {
-        // Native: use Apple IAP via RevenueCat
         await purchasePackage(rcPackage);
         if (Platform.OS === 'ios') {
           Alert.alert('Success', `You're now on the ${plan.name} plan!`, [
@@ -136,7 +152,6 @@ export default function Upgrade({ navigation }) {
           ]);
         }
       } else {
-        // Web or RC not configured: use Stripe checkout
         const origin = typeof window !== 'undefined'
           ? window.location.origin
           : 'https://cerebral-production.up.railway.app';
@@ -144,7 +159,7 @@ export default function Upgrade({ navigation }) {
         const res = await api.post('/billing/checkout', {
           plan: plan.key,
           successUrl: `${origin}/billing-success`,
-          cancelUrl: `${origin}/upgrade`,
+          cancelUrl:  `${origin}/upgrade`,
         });
 
         const url = res.data?.url;
@@ -152,9 +167,7 @@ export default function Upgrade({ navigation }) {
         IS_WEB ? (window.location.href = url) : await Linking.openURL(url);
       }
     } catch (e) {
-      if (e?.code === 'PURCHASE_CANCELLED') {
-        // User cancelled — don't show error
-      } else {
+      if (e?.code !== 'PURCHASE_CANCELLED') {
         setError(e?.message || 'Could not complete purchase. Try again.');
       }
     } finally {
@@ -186,31 +199,43 @@ export default function Upgrade({ navigation }) {
   };
 
   return (
-    <ScrollView style={[styles.container, WEB_GRADIENT]} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={[styles.hero, !IS_WEB && { paddingTop: insets.top + 16 }]}>
-        {navigation && (
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.8)" />
-          </TouchableOpacity>
-        )}
-        <View style={styles.badgeRow}>
-          <Ionicons name="flash" size={14} color="#0a9165" />
-          <Text style={styles.badgeText}>Upgrade Cerebral</Text>
-        </View>
-        <Text style={styles.heroTitle}>Level up your{'\n'}financial clarity</Text>
-        <Text style={styles.heroSub}>
-          Get AI-powered insights, smart alerts, and personalized recommendations that actually move the needle.
-        </Text>
+    <View style={[s.root, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={s.header}>
+        <TouchableOpacity style={s.backBtn} onPress={() => navigation?.goBack?.()} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={20} color={C.white} />
+        </TouchableOpacity>
+        <Text style={[s.headerTitle, IS_WEB && { fontFamily: 'Geist' }]}>Choose Your Plan</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      <View style={styles.contentArea}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 40 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero */}
+        <View style={s.hero}>
+          <View style={s.heroBadge}>
+            <Text style={s.heroBadgeText}>C</Text>
+          </View>
+          <Text style={[s.heroTitle, IS_WEB && { fontFamily: 'Geist' }]}>
+            Unlock Cerebral Intelligence
+          </Text>
+          <Text style={s.heroSub}>
+            AI-powered financial clarity — not just a budgeting app.
+          </Text>
+        </View>
+
+        {/* Error */}
         {!!error && (
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle-outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={s.errorBox}>
+            <Ionicons name="alert-circle-outline" size={15} color={C.red} style={{ marginRight: 6 }} />
+            <Text style={s.errorText}>{error}</Text>
           </View>
         )}
 
+        {/* Plan cards */}
         {PLANS.map((plan) => (
           <PlanCard
             key={plan.key}
@@ -221,110 +246,97 @@ export default function Upgrade({ navigation }) {
           />
         ))}
 
-        <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} disabled={restoring}>
+        {/* Restore purchases */}
+        <TouchableOpacity style={s.restoreBtn} onPress={handleRestore} disabled={restoring}>
           {restoring
-            ? <ActivityIndicator size="small" color="#888" />
-            : <Text style={styles.restoreText}>Restore Purchases</Text>
+            ? <ActivityIndicator size="small" color={C.muted} />
+            : <Text style={s.restoreText}>Restore Purchases</Text>
           }
         </TouchableOpacity>
 
-        <Text style={styles.disclaimer}>
-          Subscription auto-renews monthly. Cancel anytime in Settings → Subscriptions. By subscribing you agree to our Terms of Service and Privacy Policy. Secure payments via Apple.
+        <Text style={s.disclaimer}>
+          Cancel anytime · Secure payment via Stripe / Apple · No hidden fees
         </Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
+const s = StyleSheet.create({
+  root:    { flex: 1, backgroundColor: C.bg },
+  scroll:  { flex: 1 },
+  content: { paddingHorizontal: 20, paddingTop: 8 },
 
-  hero: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 36,
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: C.border,
   },
   backBtn: {
-    marginBottom: 16,
-    width: 36, height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center', alignItems: 'center',
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  badgeRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(10,145,101,0.15)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12, paddingVertical: 5,
-    borderRadius: 20, marginBottom: 16,
-    borderWidth: 1, borderColor: 'rgba(10,145,101,0.3)',
-  },
-  badgeText:  { fontSize: 12, fontWeight: '700', color: '#0a9165' },
-  heroTitle:  { fontSize: 30, fontWeight: '900', color: '#fff', lineHeight: 36, marginBottom: 12, ...(IS_WEB && { fontFamily: 'Geist' }) },
-  heroSub:    { fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 21 },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: C.white },
 
-  contentArea: {
-    backgroundColor:      '#F4F2EC',
-    borderTopLeftRadius:  28,
-    borderTopRightRadius: 28,
-    paddingTop:           24,
-    paddingHorizontal:    16,
+  hero: { alignItems: 'center', paddingVertical: 28 },
+  heroBadge: {
+    width: 56, height: 56, borderRadius: 18,
+    backgroundColor: C.tealDim, borderWidth: 1.5, borderColor: C.tealBorder,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+    ...Platform.select({
+      web:     { boxShadow: '0 0 20px 4px rgba(16,200,150,0.2)' },
+      default: { shadowColor: C.teal, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 14 },
+    }),
   },
+  heroBadgeText: { fontSize: 24, fontWeight: '900', color: C.teal },
+  heroTitle:     { fontSize: 22, fontWeight: '900', color: C.white, textAlign: 'center', marginBottom: 8, letterSpacing: -0.3 },
+  heroSub:       { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, paddingHorizontal: 16 },
 
   errorBox: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#FEF2F2', borderRadius: 10,
-    padding: 12, marginBottom: 16,
-    borderWidth: 1, borderColor: '#FECACA',
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderRadius: 12, padding: 12, marginBottom: 16,
+    borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)',
   },
-  errorText: { color: '#EF4444', fontSize: 13, flex: 1 },
+  errorText: { color: C.red, fontSize: 13, flex: 1 },
 
   card: {
-    backgroundColor: '#FBF9F4',
+    backgroundColor: C.card,
     borderRadius: 20, padding: 20,
     marginBottom: 16,
-    borderWidth: 1.5, borderColor: '#ECE8DC',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06, shadowRadius: 12, elevation: 3,
+    borderWidth: 1, borderColor: C.border,
   },
-  cardPopular: { borderWidth: 2, shadowOpacity: 0.12 },
   popularBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
     alignSelf: 'flex-start',
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4,
+    borderRadius: 999, borderWidth: 1,
+    paddingHorizontal: 10, paddingVertical: 4,
     marginBottom: 14,
   },
-  popularText: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  popularText:  { fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
+  cardHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  planName:     { fontSize: 20, fontWeight: '900', letterSpacing: -0.2 },
+  planTagline:  { fontSize: 12, color: C.muted, marginTop: 3 },
+  priceWrap:    { alignItems: 'flex-end' },
+  price:        { fontSize: 30, fontWeight: '900', letterSpacing: -1 },
+  period:       { fontSize: 12, color: C.faint, marginTop: 2 },
 
-  cardHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  planName:    { fontSize: 20, fontWeight: '800', color: '#0F172A', ...(IS_WEB && { fontFamily: 'Geist' }) },
-  planTagline: { fontSize: 12, color: '#888', marginTop: 2 },
-  priceWrap:   { alignItems: 'flex-end' },
-  price:       { fontSize: 28, fontWeight: '900', ...(IS_WEB && { fontFamily: 'Geist' }) },
-  period:      { fontSize: 12, color: '#888', marginTop: 2 },
+  featureList: { marginBottom: 20, gap: 10 },
+  featureRow:  { flexDirection: 'row', alignItems: 'center' },
+  featureIcon: { marginRight: 10 },
+  featureText: { fontSize: 14, color: C.white, fontWeight: '500', lineHeight: 19 },
 
-  featureList: { marginBottom: 20 },
-  featureRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  featureText: { fontSize: 14, color: '#333', flex: 1 },
+  selectBtn:     { borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  selectBtnText: { color: C.bg, fontSize: 15, fontWeight: '800', letterSpacing: 0.2 },
 
-  selectBtn: {
-    borderRadius: 13, paddingVertical: 14,
-    alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2, shadowRadius: 10, elevation: 5,
-  },
-  selectBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
-
-  restoreBtn: {
-    alignItems: 'center', paddingVertical: 14, marginTop: 4,
-  },
-  restoreText: { fontSize: 14, color: '#888', fontWeight: '500' },
+  restoreBtn:  { alignItems: 'center', paddingVertical: 14, marginTop: 4 },
+  restoreText: { fontSize: 13, color: C.faint, fontWeight: '500' },
 
   disclaimer: {
-    fontSize: 11, color: '#aaa', textAlign: 'center',
-    lineHeight: 16, marginTop: 4, marginBottom: 8,
-    paddingHorizontal: 8,
+    fontSize: 11, color: 'rgba(255,255,255,0.18)',
+    textAlign: 'center', lineHeight: 18,
+    marginTop: 4, marginBottom: 8, fontStyle: 'italic',
   },
 });
