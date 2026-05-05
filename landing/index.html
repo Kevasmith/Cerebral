@@ -89,8 +89,8 @@
   .waitlist {
     margin-top: 40px;
     display: inline-flex;
-    align-items: center;
-    padding: 10px 10px 10px 24px;
+    align-items: stretch;
+    padding: 6px 6px 6px 24px;
     border-radius: 999px;
     gap: 12px;
     width: 500px;
@@ -102,10 +102,16 @@
     font-family: var(--font-sans);
     font-size: 16px;
     color: #fff;
-    padding: 24px 0;
+    padding: 30px 0;
     min-width: 0;
   }
   .waitlist input::placeholder { color: rgba(255,255,255,0.35); }
+  .waitlist .btn {
+    border-radius: 999px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+  }
 
   .waitlist-status {
     margin-top: 14px;
