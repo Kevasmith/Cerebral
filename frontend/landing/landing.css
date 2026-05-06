@@ -64,6 +64,7 @@ button { font-family: inherit; cursor: pointer; border: 0; }
     rgba(255,255,255,0.12) 78%,
     rgba(255,255,255,0.40) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
   pointer-events: none;
@@ -89,6 +90,7 @@ button { font-family: inherit; cursor: pointer; border: 0; }
     rgba(255,255,255,0.18) 78%,
     rgba(255,255,255,0.55) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
   pointer-events: none;
@@ -114,6 +116,7 @@ button { font-family: inherit; cursor: pointer; border: 0; }
     rgba(255,255,255,0.2) 80%,
     rgba(255,255,255,0.6) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
   pointer-events: none;
