@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
 import {
-  MOCK_DASHBOARD, MOCK_INSIGHTS, MOCK_TRANSACTIONS,
+  MOCK_DASHBOARD, MOCK_INSIGHTS,
 } from '../data/mockData';
 
 const IS_WEB = Platform.OS === 'web';
@@ -99,40 +99,6 @@ function InsightCard({ insight, onPress }) {
   );
 }
 
-// ─── Transaction row ──────────────────────────────────────────────────────────
-const TX_ICONS = {
-  food: 'restaurant-outline', transport: 'car-outline',
-  shopping: 'phone-portrait-outline', entertainment: 'film-outline',
-  bills: 'home-outline', health: 'heart-outline',
-  income: 'card-outline', other: 'receipt-outline',
-};
-const TX_COLORS = {
-  food: '#e67e22', transport: '#3498db', shopping: '#9b59b6',
-  entertainment: '#e74c3c', bills: '#2ecc71',
-  health: '#1abc9c', income: C.teal, other: C.faint,
-};
-
-function TxRow({ tx }) {
-  const cat   = (tx.category ?? 'other').toLowerCase();
-  const icon  = TX_ICONS[cat]  ?? 'receipt-outline';
-  const color = TX_COLORS[cat] ?? C.faint;
-  const pos   = tx.amount > 0;
-  const amt   = `${pos ? '+' : ''}$${Math.abs(tx.amount).toFixed(2)}`;
-
-  return (
-    <View style={styles.txRow}>
-      <View style={[styles.txIcon, { backgroundColor: `${color}18` }]}>
-        <Ionicons name={icon} size={18} color={color} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.txName} numberOfLines={1}>{tx.description}</Text>
-        <Text style={styles.txMeta}>{tx.category} • {tx.dateLabel ?? 'Today'}</Text>
-      </View>
-      <Text style={[styles.txAmount, { color: pos ? C.teal : C.white }]}>{amt}</Text>
-    </View>
-  );
-}
-
 // ─── Net Worth Card ───────────────────────────────────────────────────────────
 function NetWorthCard({ netWorth = 0, change = 2.4, sparkData }) {
   const fmt = (n) => {
@@ -161,20 +127,23 @@ function NetWorthCard({ netWorth = 0, change = 2.4, sparkData }) {
   );
 }
 
-// ─── AI Agent Card ────────────────────────────────────────────────────────────
-function AgentCard({ message }) {
+// ─── Metric Card ──────────────────────────────────────────────────────────────
+function MetricCard({ label, amount, change, positive, points = [], accent = C.teal }) {
   return (
-    <View style={styles.agentCard}>
-      <View style={styles.agentLabelRow}>
-        <Ionicons name="sparkles" size={12} color={C.teal} />
-        <Text style={[styles.agentLabel, IS_WEB && { fontFamily: 'Geist' }]}>AI AGENT ACTIVE</Text>
+    <View style={styles.metricCard}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={[styles.metricAmount, IS_WEB && { fontFamily: 'Geist' }]}>{amount}</Text>
+      <View style={[styles.metricPill, { backgroundColor: accent + '1A', borderColor: accent + '44' }]}>
+        <Ionicons
+          name={positive ? 'trending-up' : 'trending-down'}
+          size={10}
+          color={accent}
+        />
+        <Text style={[styles.metricPillText, { color: accent }]}>{change}</Text>
       </View>
-      <Text style={[styles.agentTitle, IS_WEB && { fontFamily: 'Geist' }]}>Pulse Check</Text>
-      <Text style={styles.agentBody}>
-        {message ?? 'Your portfolio is outperforming the benchmark by '}
-        {!message && <Text style={{ color: C.teal, fontWeight: '700' }}>1.2%</Text>}
-        {!message && ' today. No urgent actions required.'}
-      </Text>
+      <View style={{ marginTop: 10 }}>
+        <Sparkline points={points} color={accent} height={40} />
+      </View>
     </View>
   );
 }
@@ -184,26 +153,22 @@ export default function Snapshot({ navigation }) {
   const insets   = useSafeAreaInsets();
   const { user } = useAuthStore();
 
-  const [chatOpen,    setChatOpen]    = useState(false);
-  const [dashboard,   setDashboard]   = useState(null);
-  const [insights,    setInsights]    = useState([]);
-  const [transactions, setTx]         = useState([]);
-  const [refreshing,  setRefreshing]  = useState(false);
+  const [chatOpen,   setChatOpen]   = useState(false);
+  const [dashboard,  setDashboard]  = useState(null);
+  const [insights,   setInsights]   = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [dRes, iRes, tRes] = await Promise.all([
+      const [dRes, iRes] = await Promise.all([
         api.get('/users/dashboard'),
         api.get('/insights'),
-        api.get('/transactions?limit=5'),
       ]);
       setDashboard(dRes.data);
       setInsights(iRes.data?.slice(0, 3) ?? []);
-      setTx(tRes.data?.transactions?.slice(0, 5) ?? []);
     } catch {
       setDashboard(MOCK_DASHBOARD);
       setInsights(MOCK_INSIGHTS.slice(0, 3));
-      setTx(MOCK_TRANSACTIONS.slice(0, 5));
     }
   }, []);
 
@@ -218,7 +183,6 @@ export default function Snapshot({ navigation }) {
   const netWorth = dashboard?.totalBalance ?? 1_248_392.42;
 
   const displayInsights = insights.length > 0 ? insights : MOCK_SNAPSHOT_INSIGHTS;
-  const displayTx       = transactions.length > 0 ? transactions : MOCK_SNAPSHOT_TX;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -244,8 +208,40 @@ export default function Snapshot({ navigation }) {
         {/* Net Worth */}
         <NetWorthCard netWorth={netWorth} />
 
-        {/* AI Agent */}
-        <AgentCard />
+        {/* Metric Cards Row */}
+        <View style={styles.metricRowWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, paddingHorizontal: 16 }}
+            style={{ marginBottom: 16 }}
+          >
+            <MetricCard
+              label="Savings"
+              amount="$4,200"
+              change="+2.1%"
+              positive
+              accent={C.teal}
+              points={[80, 85, 82, 90, 88, 95, 100, 98, 105, 110]}
+            />
+            <MetricCard
+              label="Investments"
+              amount="$12,840"
+              change="+5.4%"
+              positive
+              accent="#7C3AED"
+              points={[60, 70, 65, 80, 78, 90, 95, 88, 100, 115]}
+            />
+            <MetricCard
+              label="Spending"
+              amount="$2,340"
+              change="+8.2%"
+              positive={false}
+              accent={C.amber}
+              points={[40, 45, 50, 48, 60, 55, 70, 65, 75, 80]}
+            />
+          </ScrollView>
+        </View>
 
         {/* Manage Assets */}
         <TouchableOpacity
@@ -257,37 +253,45 @@ export default function Snapshot({ navigation }) {
           <Text style={[styles.manageBtnText, IS_WEB && { fontFamily: 'Geist' }]}>Manage Assets</Text>
         </TouchableOpacity>
 
-        {/* Insights section */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral Insights</Text>
-          <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.sectionLink}>View Intelligence Hub</Text>
+        {/* Cerebral AI + Insights — combined */}
+        <View style={styles.aiSection}>
+          {/* Pulse Check header */}
+          <View style={styles.pulseHeader}>
+            <View style={styles.pulseLabelRow}>
+              <Ionicons name="sparkles" size={12} color={C.teal} />
+              <Text style={[styles.pulseLabel, IS_WEB && { fontFamily: 'Geist' }]}>CEREBRAL AI · PULSE CHECK</Text>
+            </View>
+            <Text style={[styles.pulseTitle, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral Insights</Text>
+            <Text style={styles.pulseBody}>
+              Your portfolio is outperforming the benchmark by{' '}
+              <Text style={{ color: C.teal, fontWeight: '700' }}>1.2%</Text>
+              {' '}today. 3 new insights ready.
+            </Text>
+          </View>
+
+          {/* Insight cards */}
+          <View style={styles.insightsList}>
+            {displayInsights.map((ins, i) => (
+              <InsightCard
+                key={ins.id ?? i}
+                insight={ins}
+                onPress={() => navigation?.navigate?.('InsightDetail', { insight: ins })}
+              />
+            ))}
+          </View>
+
+          {/* View Intelligence Hub CTA */}
+          <TouchableOpacity
+            style={styles.hubBtn}
+            onPress={() => navigation?.navigate?.('IntelligenceHub', { insights: displayInsights })}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="sparkles" size={16} color={C.bg} />
+            <Text style={[styles.hubBtnText, IS_WEB && { fontFamily: 'Geist' }]}>View Intelligence Hub</Text>
+            <Ionicons name="arrow-forward" size={16} color={C.bg} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.insightsList}>
-          {displayInsights.map((ins, i) => (
-            <InsightCard
-              key={ins.id ?? i}
-              insight={ins}
-              onPress={() => navigation?.navigate?.('InsightDetail', { insight: ins })}
-            />
-          ))}
-        </View>
-
-        {/* Recent Activity */}
-        <View style={[styles.sectionHeader, { marginTop: 28 }]}>
-          <Text style={[styles.sectionTitle, IS_WEB && { fontFamily: 'Geist' }]}>Recent Activity</Text>
-          <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.sectionLink}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.txList}>
-          {displayTx.map((tx, i) => (
-            <TxRow key={tx.id ?? i} tx={tx} />
-          ))}
-        </View>
       </ScrollView>
       <ChatSheet visible={chatOpen} onClose={() => setChatOpen(false)} screenKey="snapshot" />
     </View>
@@ -311,14 +315,6 @@ const MOCK_SNAPSHOT_INSIGHTS = [
     title: 'Auto-invest opportunity: $1,200 Surplus',
     description: 'Analysis shows excess cash in your primary account. Recommended: Move to Index Fund.',
   },
-];
-
-const MOCK_SNAPSHOT_TX = [
-  { id: '1', description: 'Apple Store',           category: 'shopping',      amount: -1299.00, dateLabel: 'Today' },
-  { id: '2', description: 'Lumina Bistro',          category: 'food',          amount: -82.50,   dateLabel: 'Today' },
-  { id: '3', description: 'Payroll Deposit',        category: 'income',        amount: 8400.00,  dateLabel: 'Aug 24' },
-  { id: '4', description: 'Tesla Supercharge',      category: 'transport',     amount: -18.42,   dateLabel: 'Aug 23' },
-  { id: '5', description: 'Westside Property Mgmt', category: 'bills',         amount: -3500.00, dateLabel: 'Aug 22' },
 ];
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -358,41 +354,73 @@ const styles = StyleSheet.create({
   networthAmt:   { fontSize: 40, fontWeight: '900', color: C.white, letterSpacing: -1 },
   networthDec:   { fontSize: 22, fontWeight: '700', color: C.muted, marginBottom: 4, marginLeft: 1 },
 
-  // AI Agent Card
-  agentCard: {
+  // Metric Cards
+  metricRowWrapper: { marginHorizontal: -16, marginBottom: 0 },
+  metricCard: {
     backgroundColor: C.card,
-    borderRadius: 18, padding: 18,
-    borderWidth: 1, borderColor: C.tealBorder,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+    width: 150,
   },
-  agentLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  agentLabel:    { fontSize: 11, fontWeight: '800', color: C.teal, letterSpacing: 1.2 },
-  agentTitle:    { fontSize: 16, fontWeight: '800', color: C.white, marginBottom: 6 },
-  agentBody:     { fontSize: 14, color: C.muted, lineHeight: 21 },
+  metricLabel: {
+    fontSize: 10, fontWeight: '700', color: C.faint,
+    letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6,
+  },
+  metricAmount: {
+    fontSize: 20, fontWeight: '800', color: C.white, letterSpacing: -0.5,
+  },
+  metricPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    marginTop: 4,
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  metricPillText: { fontSize: 11, fontWeight: '700' },
 
   // Manage Assets button
   manageBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: C.teal,
     borderRadius: 16, paddingVertical: 16,
-    marginBottom: 28,
+    marginBottom: 20,
   },
   manageBtnText: { fontSize: 15, fontWeight: '800', color: C.bg },
 
-  // Section headers
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 12,
+  // AI + Insights combined section
+  aiSection: {
+    backgroundColor: C.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: C.tealBorder,
+    overflow: 'hidden',
+    marginBottom: 20,
   },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: C.white },
-  sectionLink:  { fontSize: 13, fontWeight: '600', color: C.teal },
+  pulseHeader: {
+    padding: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+  },
+  pulseLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  pulseLabel: { fontSize: 11, fontWeight: '800', color: C.teal, letterSpacing: 1.2 },
+  pulseTitle: { fontSize: 18, fontWeight: '800', color: C.white, marginBottom: 6 },
+  pulseBody: { fontSize: 13, color: C.muted, lineHeight: 19 },
+  insightsList: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  hubBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: C.teal,
+    margin: 14, marginTop: 6,
+    borderRadius: 14, paddingVertical: 14,
+  },
+  hubBtnText: { fontSize: 15, fontWeight: '800', color: C.bg },
 
   // Insights
-  insightsList: { gap: 10 },
   insightCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: C.card,
-    borderRadius: 16, padding: 14,
+    backgroundColor: C.cardDeep,
+    borderRadius: 14, padding: 14,
     borderWidth: 1, borderColor: C.border,
   },
   insightIcon: {
@@ -405,24 +433,4 @@ const styles = StyleSheet.create({
   insightAge:   { fontSize: 11, color: C.faint },
   insightTitle: { fontSize: 14, fontWeight: '700', color: C.white, marginBottom: 3 },
   insightBody:  { fontSize: 12, color: C.muted, lineHeight: 17 },
-
-  // Transactions
-  txList: {
-    backgroundColor: C.card,
-    borderRadius: 18,
-    borderWidth: 1, borderColor: C.border,
-    overflow: 'hidden',
-  },
-  txRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: C.border,
-  },
-  txIcon: {
-    width: 38, height: 38, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  txName:   { fontSize: 14, fontWeight: '600', color: C.white, marginBottom: 2 },
-  txMeta:   { fontSize: 12, color: C.faint, textTransform: 'capitalize' },
-  txAmount: { fontSize: 14, fontWeight: '700', minWidth: 80, textAlign: 'right' },
 });
