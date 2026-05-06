@@ -258,11 +258,10 @@ button { font-family: inherit; cursor: pointer; border: 0; }
 }
 .brand-mark {
   width: 32px; height: 32px; border-radius: 9px;
-  background: linear-gradient(180deg, #0a9165, #085c3a);
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 12px rgba(10,145,101,0.4);
+  overflow: hidden;
+  flex-shrink: 0;
 }
-.brand-mark svg { width: 16px; height: 16px; }
+.brand-mark img { width: 32px; height: 32px; display: block; }
 .brand-name {
   font-family: var(--font-display);
   font-weight: 600;
