@@ -9,89 +9,14 @@ import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
 import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
+import { C } from '../constants/theme';
+import { BANKS } from '../constants/banks';
+import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPE_ICON } from '../constants/account-types';
+import { fmtBalance, timeSince, bankColor, bankInitial } from '../utils/format';
 
 const IS_WEB = Platform.OS === 'web';
 const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
 const FLINKS_REDIRECT = 'https://cerebral.app/bank-connected';
-
-const C = {
-  bg:         '#080E14',
-  card:       '#0D1520',
-  cardAlt:    '#0A1018',
-  teal:       '#10C896',
-  tealDim:    'rgba(16,200,150,0.12)',
-  tealBorder: 'rgba(16,200,150,0.25)',
-  white:      '#FFFFFF',
-  muted:      'rgba(255,255,255,0.55)',
-  faint:      'rgba(255,255,255,0.28)',
-  border:     'rgba(255,255,255,0.07)',
-  input:      'rgba(255,255,255,0.05)',
-  green:      '#22C55E',
-  greenDim:   'rgba(34,197,94,0.12)',
-  greenBorder:'rgba(34,197,94,0.25)',
-};
-
-const BANKS = [
-  { label: 'TD Bank',       mark: 'TD',  bg: '#1A6137', txt: '#fff' },
-  { label: 'RBC',           mark: 'RBC', bg: '#005DAA', txt: '#fff' },
-  { label: 'Scotiabank',    mark: 'S',   bg: '#EC1C24', txt: '#fff' },
-  { label: 'BMO',           mark: 'BMO', bg: '#0277BD', txt: '#fff' },
-  { label: 'CIBC',          mark: 'C',   bg: '#C41230', txt: '#fff' },
-  { label: 'National Bank', mark: 'NB',  bg: '#E2001A', txt: '#fff' },
-];
-
-const ACCOUNT_TYPE_LABEL = {
-  checking:   'Chequing',
-  savings:    'Savings',
-  credit:     'Credit',
-  investment: 'Investment',
-};
-
-const ACCOUNT_TYPE_ICON = {
-  checking:   'card-outline',
-  savings:    'wallet-outline',
-  credit:     'card',
-  investment: 'trending-up-outline',
-};
-
-function bankInitial(name) {
-  if (!name) return '?';
-  const words = name.trim().split(' ');
-  return words.length >= 2
-    ? (words[0][0] + words[1][0]).toUpperCase()
-    : name.slice(0, 2).toUpperCase();
-}
-
-function bankColor(name) {
-  const n = (name ?? '').toLowerCase();
-  if (n.includes('td'))          return '#1A6137';
-  if (n.includes('rbc') || n.includes('royal')) return '#005DAA';
-  if (n.includes('scotia'))      return '#EC1C24';
-  if (n.includes('bmo'))         return '#0277BD';
-  if (n.includes('cibc'))        return '#C41230';
-  if (n.includes('national'))    return '#E2001A';
-  if (n.includes('tangerine'))   return '#FF6900';
-  if (n.includes('desjardins'))  return '#008542';
-  return '#1E3A5F';
-}
-
-function fmtBalance(val) {
-  const n = parseFloat(val ?? 0);
-  const abs = Math.abs(n);
-  const fmt = abs.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return n < 0 ? `-$${fmt}` : `$${fmt}`;
-}
-
-function timeSince(dateStr) {
-  if (!dateStr) return null;
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 2)    return 'Just now';
-  if (mins < 60)   return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)    return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
 
 // ─── Active account row ───────────────────────────────────────────────────────
 function AccountRow({ account }) {
