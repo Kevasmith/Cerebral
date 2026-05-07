@@ -32,3 +32,12 @@ Thumbs.db
 
 # Google Play service account key (contains secrets)
 google-service-account.json
+
+# Claude Code / agent tooling (user-local)
+.claude/
+.agents/
+skills-lock.json
+
+# Stray local artifacts
+buf.length
+posthog-setup-report.md
