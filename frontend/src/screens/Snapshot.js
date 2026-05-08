@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
+import TrendLine from '../components/TrendLine';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
@@ -15,6 +16,20 @@ import {
 
 const IS_WEB = Platform.OS === 'web';
 const { width: SW } = Dimensions.get('window');
+
+function hexAlpha(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Derives N data points ending at `current` given a constant per-period growth rate.
+function buildSparkPoints(current, pctPerPeriod, count = 10) {
+  const rate = pctPerPeriod / 100;
+  const start = current / Math.pow(1 + rate, count - 1);
+  return Array.from({ length: count }, (_, i) => Math.round(start * Math.pow(1 + rate, i)));
+}
 
 const C = {
   bg:          '#080E14',
@@ -34,34 +49,18 @@ const C = {
 };
 
 // ─── Sparkline chart ──────────────────────────────────────────────────────────
-function Sparkline({ points = [], color = C.teal, height = 56 }) {
-  const W = Math.min(SW - 80, 600);
-  if (!IS_WEB) {
-    return (
-      <View style={{ height, justifyContent: 'flex-end', paddingHorizontal: 4 }}>
-        <View style={{ height: 2, backgroundColor: color, borderRadius: 1, opacity: 0.8 }} />
-      </View>
-    );
-  }
-  const max = Math.max(...points, 1);
-  const min = Math.min(...points);
-  const normalize = (v) => height - ((v - min) / (max - min + 0.001)) * height;
-  const pts = points.map((v, i) => `${(i / (points.length - 1)) * W},${normalize(v)}`).join(' L ');
-  const area = `M ${pts} L ${W},${height} L 0,${height} Z`;
-
+// Thin wrapper around TrendLine so existing call sites stay unchanged.
+function Sparkline({ points = [], color = C.teal, height = 56, width }) {
+  const W = width ?? Math.min(SW - 80, 600);
   return (
-    <View style={{ height }}>
-      <svg width={W} height={height} style={{ display: 'block', overflow: 'visible' }}>
-        <defs>
-          <linearGradient id="sg" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-            <stop offset="100%" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={`M ${pts}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={area} fill="url(#sg)" />
-      </svg>
-    </View>
+    <TrendLine
+      points={points}
+      color={color}
+      width={W}
+      height={height}
+      fill
+      showDots={false}
+    />
   );
 }
 
@@ -121,11 +120,15 @@ function NetWorthCard({ netWorth = 0, change = 2.4, sparkData }) {
         <Text style={[styles.networthDec, IS_WEB && { fontFamily: 'Geist' }]}>.{dec}</Text>
       </View>
       <View style={{ marginTop: 16, marginHorizontal: -4 }}>
-        <Sparkline points={sparkData ?? [100, 120, 115, 130, 128, 145, 160, 155, 175, 190]} />
+        <Sparkline points={sparkData ?? buildSparkPoints(netWorth, change)} />
       </View>
     </View>
   );
 }
+
+const METRIC_CARD_W = 150;
+const METRIC_CARD_PAD = 14;
+const METRIC_SPARKLINE_W = METRIC_CARD_W - METRIC_CARD_PAD * 2;
 
 // ─── Metric Card ──────────────────────────────────────────────────────────────
 function MetricCard({ label, amount, change, positive, points = [], accent = C.teal }) {
@@ -133,7 +136,10 @@ function MetricCard({ label, amount, change, positive, points = [], accent = C.t
     <View style={styles.metricCard}>
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={[styles.metricAmount, IS_WEB && { fontFamily: 'Geist' }]}>{amount}</Text>
-      <View style={[styles.metricPill, { backgroundColor: accent + '1A', borderColor: accent + '44' }]}>
+      <View style={[styles.metricPill, {
+        backgroundColor: hexAlpha(accent, 0.10),
+        borderColor: hexAlpha(accent, 0.27),
+      }]}>
         <Ionicons
           name={positive ? 'trending-up' : 'trending-down'}
           size={10}
@@ -142,7 +148,7 @@ function MetricCard({ label, amount, change, positive, points = [], accent = C.t
         <Text style={[styles.metricPillText, { color: accent }]}>{change}</Text>
       </View>
       <View style={{ marginTop: 10 }}>
-        <Sparkline points={points} color={accent} height={40} />
+        <Sparkline points={points} color={accent} height={40} width={METRIC_SPARKLINE_W} />
       </View>
     </View>
   );
@@ -222,7 +228,7 @@ export default function Snapshot({ navigation }) {
               change="+2.1%"
               positive
               accent={C.teal}
-              points={[80, 85, 82, 90, 88, 95, 100, 98, 105, 110]}
+              points={buildSparkPoints(4200, 2.1)}
             />
             <MetricCard
               label="Investments"
@@ -230,7 +236,7 @@ export default function Snapshot({ navigation }) {
               change="+5.4%"
               positive
               accent="#7C3AED"
-              points={[60, 70, 65, 80, 78, 90, 95, 88, 100, 115]}
+              points={buildSparkPoints(12840, 5.4)}
             />
             <MetricCard
               label="Spending"
@@ -238,7 +244,7 @@ export default function Snapshot({ navigation }) {
               change="+8.2%"
               positive={false}
               accent={C.amber}
-              points={[40, 45, 50, 48, 60, 55, 70, 65, 75, 80]}
+              points={buildSparkPoints(2340, 8.2)}
             />
           </ScrollView>
         </View>
@@ -419,9 +425,9 @@ const styles = StyleSheet.create({
   // Insights
   insightCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: C.cardDeep,
+    backgroundColor: C.bg,
     borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: C.border,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
   },
   insightIcon: {
     width: 40, height: 40, borderRadius: 12,
