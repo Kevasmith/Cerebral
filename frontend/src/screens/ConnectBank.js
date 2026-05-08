@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Platform, ActivityIndicator,
@@ -6,10 +6,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
+import { openPlaidLink } from '../utils/plaidLink';
 
 const IS_WEB = Platform.OS === 'web';
-const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
-const FLINKS_REDIRECT = 'https://cerebral.app/bank-connected';
 
 const C = {
   bg:         '#080E14',
@@ -80,63 +79,49 @@ function FeatureCard({ icon, title, body }) {
 export default function ConnectBank({ navigation }) {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
-  const [showWebView, setShowWebView] = useState(false);
-  const [connectUrl, setConnectUrl] = useState(null);
-  const [urlLoading, setUrlLoading] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [selectedBank, setSelectedBank] = useState(null);
 
   const filteredBanks = search.trim()
     ? BANKS.filter(b => b.label.toLowerCase().includes(search.toLowerCase()))
     : BANKS;
 
-  const openFlinks = useCallback(async (bank) => {
-    setSelectedBank(bank);
-    if (IS_WEB) return;
-    setUrlLoading(true);
+  // Plaid Link flow:
+  // 1) POST /accounts/link-token → server-issued link_token
+  // 2) Open Plaid Link (native modal — Plaid presents its own institution picker)
+  // 3) On success → POST /accounts/sync with the public_token; navigate back
+  const openConnect = useCallback(async () => {
+    setLinkLoading(true);
     try {
-      const res = await api.get('/accounts/connect-url');
-      setConnectUrl(res.data.url);
-      setShowWebView(true);
+      const { data } = await api.post('/accounts/link-token');
+      setLinkLoading(false);
+
+      if (data?.kind !== 'link_token' || !data?.value) {
+        return;
+      }
+
+      await openPlaidLink({
+        linkToken: data.value,
+        onSuccess: async (publicToken) => {
+          if (!publicToken) return;
+          setSyncing(true);
+          try {
+            await api.post('/accounts/sync', { provider: 'plaid', publicToken });
+          } catch {
+            // swallow — user can retry
+          } finally {
+            setSyncing(false);
+            navigation?.goBack?.();
+          }
+        },
+        onExit: () => {
+          // user dismissed; stay on this screen
+        },
+      });
     } catch {
-      // silently fall back
-    } finally {
-      setUrlLoading(false);
+      setLinkLoading(false);
     }
-  }, []);
-
-  const handleNavChange = useCallback(async (navState) => {
-    if (!navState.url.startsWith(FLINKS_REDIRECT)) return;
-    setShowWebView(false);
-    setSyncing(true);
-    try {
-      const params = new URL(navState.url);
-      const loginId = params.searchParams.get('loginId');
-      if (loginId) await api.post('/accounts/sync', { loginId });
-    } catch {}
-    setSyncing(false);
-    navigation?.goBack?.();
   }, [navigation]);
-
-  // ── Flinks WebView overlay ────────────────────────────────────────────────
-  if (showWebView && WebView && connectUrl) {
-    return (
-      <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
-        <TouchableOpacity
-          style={styles.webViewClose}
-          onPress={() => setShowWebView(false)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="close" size={20} color={C.white} />
-        </TouchableOpacity>
-        <WebView
-          source={{ uri: connectUrl }}
-          onNavigationStateChange={handleNavChange}
-          style={{ flex: 1 }}
-        />
-      </View>
-    );
-  }
 
   if (syncing) {
     return (
@@ -207,12 +192,12 @@ export default function ConnectBank({ navigation }) {
             <BankTile
               key={bank.label}
               bank={bank}
-              onPress={() => openFlinks(bank)}
+              onPress={openConnect}
             />
           ))}
         </View>
 
-        {urlLoading && (
+        {linkLoading && (
           <ActivityIndicator size="small" color={C.teal} style={{ marginVertical: 12 }} />
         )}
 
@@ -324,10 +309,6 @@ const styles = StyleSheet.create({
   featureTitle: { fontSize: 15, fontWeight: '700', color: C.white, marginBottom: 5 },
   featureBody: { fontSize: 13, color: C.muted, lineHeight: 19 },
 
-  // WebView / sync
-  webViewClose: {
-    margin: 16, width: 36, height: 36, borderRadius: 18,
-    backgroundColor: C.card, alignItems: 'center', justifyContent: 'center',
-  },
+  // Sync
   syncText: { fontSize: 15, color: C.muted },
 });
