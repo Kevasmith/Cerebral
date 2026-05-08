@@ -221,7 +221,10 @@ export class TransactionsService {
   }
 
   /**
-   * Create a new transaction with auto-categorization
+   * Create a new transaction with auto-categorization.
+   * Accepts both Flinks- and Plaid-sourced fields. The merchant-pattern
+   * categorizer always wins; `plaidPrimaryCategory` is stored as a fallback
+   * hint for analytics + future use (see categories.ts).
    */
   async createTransaction(data: {
     accountId: string;
@@ -231,6 +234,9 @@ export class TransactionsService {
     date: Date;
     merchantName?: string;
     flinksTransactionId?: string;
+    plaidTransactionId?: string;
+    plaidPrimaryCategory?: string | null;
+    pending?: boolean;
     currency?: string;
   }): Promise<Transaction> {
     const category = this.categorizeTransaction(

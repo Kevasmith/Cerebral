@@ -34,6 +34,19 @@ export class Transaction {
   @Column({ nullable: true })
   flinksTransactionId: string;
 
+  @Column({ nullable: true })
+  plaidTransactionId: string | null;
+
+  // Plaid `personal_finance_category.primary` raw value. Used as a fallback
+  // hint when the merchant-pattern table doesn't match. The merchant pattern
+  // still wins; this is a safety net so unknown merchants don't all collapse
+  // to OTHER.
+  @Column({ nullable: true })
+  plaidPrimaryCategory: string | null;
+
+  @Column({ default: false })
+  pending: boolean;
+
   @Column({ transformer: encryptedTransformer })
   description: string;
 

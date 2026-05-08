@@ -6,6 +6,8 @@ import { Transaction } from '../../entities/transaction.entity';
 import { FlinksService } from '../flinks/flinks.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { FlinksAccount } from '../flinks/flinks.types';
+import { BankProviderRouter } from '../bank/bank-provider.router';
+import { NormalizedAccount } from '../bank/bank-provider.interface';
 import { UserGoal } from '../../entities/preference.entity';
 
 @Injectable()
@@ -17,6 +19,7 @@ export class AccountsService {
     private readonly accountRepo: Repository<Account>,
     private readonly flinks: FlinksService,
     private readonly transactionsService: TransactionsService,
+    private readonly bankProviderRouter: BankProviderRouter,
   ) {}
 
   getConnectUrl(redirectUrl: string): string {
@@ -44,6 +47,119 @@ export class AccountsService {
 
   async findAllByUser(userId: string): Promise<Account[]> {
     return this.accountRepo.find({ where: { userId } });
+  }
+
+  /**
+   * Plaid sync: exchange public_token for access_token, persist accounts +
+   * transactions. Mirrors syncFromLoginId on the Flinks side; the two paths
+   * unify in step 5 via the BankProviderRouter (current code already routes
+   * the connection through the router, so step 5 is mostly removing the
+   * Flinks-specific branches in this file).
+   */
+  async syncFromPlaidPublicToken(
+    userId: string,
+    publicToken: string,
+  ): Promise<Account[]> {
+    const provider = this.bankProviderRouter.forProvider('plaid');
+
+    // 1. Exchange public_token → access_token + item_id
+    const { accessRef: accessToken, externalId: itemId } =
+      await provider.finalizeConnection({ provider: 'plaid', publicToken });
+
+    // 2. Fetch normalized accounts
+    const normalized = await provider.fetchAccounts(accessToken);
+
+    // 3. Upsert each account row, persisting access_token (encrypted) +
+    // item_id so future syncs can reuse them without re-linking.
+    const saved = await Promise.all(
+      normalized.map((na) =>
+        this.upsertPlaidAccount(userId, na, accessToken, itemId),
+      ),
+    );
+
+    // 4. Pull initial transactions cursor + persist
+    const { transactions, nextCursor } = await provider.fetchTransactions(
+      accessToken,
+    );
+
+    const accountByExternalId = new Map(
+      saved.map((a) => [a.plaidAccountId, a] as const),
+    );
+
+    for (const t of transactions) {
+      const acct = accountByExternalId.get(t.externalAccountId);
+      if (!acct) continue;
+      const existing = await this.accountRepo.manager
+        .getRepository('transactions')
+        .findOne({ where: { plaidTransactionId: t.externalTransactionId } });
+      if (existing) continue;
+      await this.transactionsService.createTransaction({
+        accountId: acct.id,
+        plaidTransactionId: t.externalTransactionId,
+        description: t.description,
+        merchantName: t.merchantName ?? undefined,
+        amount: t.amount,
+        isDebit: t.isDebit,
+        date: new Date(t.date),
+        currency: t.currency ?? 'CAD',
+        plaidPrimaryCategory: t.providerPrimaryCategory ?? null,
+        pending: t.pending,
+      });
+    }
+
+    // 5. Persist cursor on every account from this item so the next sync
+    // resumes from where this one ended.
+    if (nextCursor) {
+      await Promise.all(
+        saved.map((a) => {
+          a.plaidTxCursor = nextCursor;
+          return this.accountRepo.save(a);
+        }),
+      );
+    }
+
+    return saved;
+  }
+
+  private async upsertPlaidAccount(
+    userId: string,
+    na: NormalizedAccount,
+    accessToken: string,
+    itemId: string,
+  ): Promise<Account> {
+    let account = await this.accountRepo.findOne({
+      where: { plaidAccountId: na.externalAccountId },
+    });
+
+    if (!account) {
+      account = this.accountRepo.create({
+        userId,
+        provider: 'plaid',
+        plaidAccountId: na.externalAccountId,
+      });
+    }
+
+    account.provider = 'plaid';
+    account.plaidAccountId = na.externalAccountId;
+    account.plaidItemId = itemId;
+    account.plaidAccessToken = accessToken;
+    account.institutionName = na.institutionName || 'Bank';
+    account.accountName = na.accountName;
+    account.balance = na.balance.current ?? na.balance.available ?? 0;
+    account.currency = na.balance.currency ?? 'CAD';
+    account.accountType = this.normalizedTypeToEnum(na.accountType);
+    account.lastSyncedAt = new Date();
+
+    return this.accountRepo.save(account);
+  }
+
+  private normalizedTypeToEnum(t: string): AccountType {
+    switch (t) {
+      case 'savings': return AccountType.SAVINGS;
+      case 'credit': return AccountType.CREDIT;
+      case 'investment': return AccountType.INVESTMENT;
+      default: return AccountType.CHECKING;
+    }
   }
 
   private async upsertAccount(

@@ -27,8 +27,27 @@ export class Account {
   @Column()
   userId: string;
 
-  @Column()
-  flinksAccountId: string;
+  // Which aggregator linked this account.
+  // Default 'flinks' covers all rows that pre-date the Plaid integration.
+  @Column({ type: 'varchar', length: 16, default: 'flinks' })
+  provider: 'flinks' | 'plaid';
+
+  @Column({ nullable: true })
+  flinksAccountId: string | null;
+
+  // Plaid-only identifiers. plaidAccessToken is encrypted at rest because
+  // it's a long-lived credential.
+  @Column({ nullable: true })
+  plaidAccountId: string | null;
+
+  @Column({ nullable: true })
+  plaidItemId: string | null;
+
+  @Column({ type: 'text', nullable: true, transformer: encryptedTransformer })
+  plaidAccessToken: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  plaidTxCursor: string | null;
 
   @Column({ transformer: encryptedTransformer })
   institutionName: string;

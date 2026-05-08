@@ -1,5 +1,13 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
-import { IsString, MaxLength } from 'class-validator';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Throttle } from '@nestjs/throttler';
 import { AccountsService } from './accounts.service';
 import { UsersService } from '../users/users.service';
@@ -9,9 +17,24 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { posthog } from '../../posthog';
 
 class SyncBankDto {
+  // Discriminator. Optional for backward compatibility with the existing
+  // Flinks payload shape ({ loginId }). Plaid clients must send 'plaid'.
+  @IsOptional()
+  @IsString()
+  @IsIn(['flinks', 'plaid'])
+  provider?: 'flinks' | 'plaid';
+
+  // Flinks payload
+  @IsOptional()
   @IsString()
   @MaxLength(200)
-  loginId: string;
+  loginId?: string;
+
+  // Plaid payload — short-lived, returned by Plaid Link on the client.
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  publicToken?: string;
 }
 
 const FLINKS_REDIRECT_URL = 'https://cerebral.app/bank-connected';
@@ -63,7 +86,7 @@ export class AccountsController {
       .initConnection(profile.id, { redirectUrl: FLINKS_REDIRECT_URL });
   }
 
-  // 5 bank syncs per minute per IP — Flinks is slow and expensive
+  // 5 bank syncs per minute per IP — bank aggregator calls are slow + expensive.
   @Throttle({ global: { limit: 5, ttl: 60_000 } })
   @Post('sync')
   async syncBank(
@@ -71,14 +94,35 @@ export class AccountsController {
     @Body() body: SyncBankDto,
   ) {
     const profile = await this.usersService.findByBetterAuthId(user.id);
-    const result = await this.accountsService.syncFromLoginId(
-      profile.id,
-      body.loginId,
-    );
+
+    // Route on payload shape (publicToken → Plaid; loginId → Flinks).
+    // The provider field is informational; the shape is authoritative so a
+    // payload with the wrong combo gets rejected explicitly.
+    let result;
+    let resolvedProvider: 'plaid' | 'flinks';
+    if (body.publicToken) {
+      resolvedProvider = 'plaid';
+      result = await this.accountsService.syncFromPlaidPublicToken(
+        profile.id,
+        body.publicToken,
+      );
+    } else if (body.loginId) {
+      resolvedProvider = 'flinks';
+      result = await this.accountsService.syncFromLoginId(
+        profile.id,
+        body.loginId,
+      );
+    } else {
+      throw new BadRequestException(
+        'Missing publicToken (Plaid) or loginId (Flinks)',
+      );
+    }
+
     posthog.capture({
       distinctId: user.id,
       event: 'bank_account_synced',
       properties: {
+        provider: resolvedProvider,
         accounts_synced: Array.isArray(result) ? result.length : undefined,
       },
     });
