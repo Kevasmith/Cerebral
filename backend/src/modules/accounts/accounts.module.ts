@@ -6,9 +6,10 @@ import { Account } from '../../entities/account.entity';
 import { FlinksModule } from '../flinks/flinks.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { UsersModule } from '../users/users.module';
+import { BankModule } from '../bank/bank.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Account]), FlinksModule, TransactionsModule, UsersModule],
+  imports: [TypeOrmModule.forFeature([Account]), FlinksModule, TransactionsModule, UsersModule, BankModule],
   controllers: [AccountsController],
   providers: [AccountsService],
   exports: [AccountsService],

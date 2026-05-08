@@ -1,6 +1,17 @@
-import { Injectable, Logger, NotImplementedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotImplementedException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
+import {
+  Configuration,
+  CountryCode,
+  PlaidApi,
+  PlaidEnvironments,
+  Products,
+} from 'plaid';
 import {
   PlaidAccount,
   PlaidExchangeResult,
@@ -50,12 +61,26 @@ export class PlaidService {
   // NotImplementedException at runtime; calling them before the corresponding
   // step is implemented is a programmer error.
 
-  // Step 3
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Step 3 — implemented
   async createLinkToken(userId: string): Promise<PlaidLinkToken> {
-    throw new NotImplementedException(
-      'PlaidService.createLinkToken — implemented in Plaid integration step 3',
-    );
+    if (!this.hasCredentials) {
+      throw new ServiceUnavailableException('Plaid not configured');
+    }
+    const webhook = this.config.get<string>('PLAID_WEBHOOK_URL') || undefined;
+    try {
+      const { data } = await this.client.linkTokenCreate({
+        user: { client_user_id: userId },
+        client_name: 'Cerebral',
+        products: [Products.Transactions],
+        country_codes: [CountryCode.Ca],
+        language: 'en',
+        ...(webhook ? { webhook } : {}),
+      });
+      return { linkToken: data.link_token, expiration: data.expiration };
+    } catch (err) {
+      this.logger.error('Plaid linkTokenCreate failed', err);
+      throw new ServiceUnavailableException('Failed to create Plaid link token');
+    }
   }
 
   // Step 4
