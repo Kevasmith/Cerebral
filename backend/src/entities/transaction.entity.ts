@@ -11,6 +11,8 @@ import { Account } from './account.entity';
 import { encryptedTransformer } from '../common/crypto/column-encryption';
 
 export enum TransactionCategory {
+  INCOME = 'income',
+  TRANSFER = 'transfer',
   FOOD = 'food',
   TRANSPORT = 'transport',
   ENTERTAINMENT = 'entertainment',
@@ -18,8 +20,12 @@ export enum TransactionCategory {
   BILLS = 'bills',
   HEALTH = 'health',
   TRAVEL = 'travel',
-  INCOME = 'income',
-  TRANSFER = 'transfer',
+  LOANS = 'loans',
+  FEES = 'fees',
+  HOME = 'home',
+  PERSONAL_CARE = 'personal_care',
+  SERVICES = 'services',
+  GOVERNMENT = 'government',
   OTHER = 'other',
 }
 

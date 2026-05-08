@@ -4,6 +4,7 @@ import { Repository, Between, MoreThanOrEqual } from 'typeorm';
 import { Transaction, TransactionCategory } from '../../entities/transaction.entity';
 import { Account } from '../../entities/account.entity';
 import { FlinksService } from '../flinks/flinks.service';
+import { mapPlaidPrimaryToCerebral } from './categories';
 
 interface CategoryPatterns {
   [key: string]: string[];
@@ -196,25 +197,31 @@ export class TransactionsService {
   }
 
   /**
-   * Categorize a transaction based on its description and merchant name
+   * Categorize a transaction. Merchant patterns win first; if nothing matches
+   * and the transaction came from Plaid, fall back to the Plaid primary
+   * category so we don't collapse 6+ buckets (rent, loans, fees, gov, etc.)
+   * into OTHER. See `categories.ts` for the canonical taxonomy.
    */
   private categorizeTransaction(
     description: string,
     merchantName?: string,
     isDebit?: boolean,
+    plaidPrimaryCategory?: string | null,
   ): TransactionCategory {
     const searchText = `${description} ${merchantName || ''}`.toLowerCase();
 
-    // Income transactions (credit deposits)
     if (!isDebit && description.toLowerCase().includes('deposit')) {
       return TransactionCategory.INCOME;
     }
 
-    // Check each category's patterns
     for (const [category, patterns] of Object.entries(this.categoryPatterns)) {
       if (patterns.some((pattern) => searchText.includes(pattern.toLowerCase()))) {
         return category as TransactionCategory;
       }
+    }
+
+    if (plaidPrimaryCategory) {
+      return mapPlaidPrimaryToCerebral(plaidPrimaryCategory) as TransactionCategory;
     }
 
     return TransactionCategory.OTHER;
@@ -243,6 +250,7 @@ export class TransactionsService {
       data.description,
       data.merchantName,
       data.isDebit,
+      data.plaidPrimaryCategory,
     );
 
     const transaction = this.transactionRepository.create({
