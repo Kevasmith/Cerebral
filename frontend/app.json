@@ -21,7 +21,8 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Cerebral uses your location to surface local financial opportunities.",
-        "NSUserNotificationsUsageDescription": "Cerebral sends you alerts when your spending changes or new AI insights are ready. You can turn this off at any time in Settings."
+        "NSUserNotificationsUsageDescription": "Cerebral sends you alerts when your spending changes or new AI insights are ready. You can turn this off at any time in Settings.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
