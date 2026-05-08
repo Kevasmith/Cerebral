@@ -151,12 +151,13 @@ export default function ConnectBank({ navigation }) {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity style={styles.headerLeft} onPress={() => navigation?.goBack?.()} activeOpacity={0.75}>
+          <Ionicons name="chevron-back" size={20} color={C.teal} />
           <View style={styles.avatar}>
             <Ionicons name="person" size={14} color={C.white} />
           </View>
           <Text style={[styles.headerBrand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
           <Ionicons name="notifications-outline" size={22} color={C.teal} />
         </TouchableOpacity>

@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, FlatList,
+  View, Text, Image, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
   Modal, Animated, Dimensions, TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
+
+const LOGO = require('../../assets/logo-mark.png');
 
 const IS_WEB  = Platform.OS === 'web';
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -80,7 +82,7 @@ function Bubble({ item }) {
     <View style={[s.bubbleRow, isUser ? s.bubbleRowUser : s.bubbleRowAI]}>
       {!isUser && (
         <View style={s.aiBadge}>
-          <Text style={s.aiBadgeText}>C</Text>
+          <Image source={LOGO} style={s.aiBadgeLogo} resizeMode="contain" />
         </View>
       )}
       <View style={[s.bubble, isUser ? s.bubbleUser : s.bubbleAI]}>
@@ -103,7 +105,7 @@ function TypingDots() {
   return (
     <View style={s.bubbleRow}>
       <View style={s.aiBadge}>
-        <Text style={s.aiBadgeText}>C</Text>
+        <Image source={LOGO} style={s.aiBadgeLogo} resizeMode="contain" />
       </View>
       <View style={[s.bubble, s.bubbleAI, { paddingVertical: 14, paddingHorizontal: 18 }]}>
         <Animated.View style={{ opacity: op, flexDirection: 'row', gap: 4 }}>
@@ -166,7 +168,7 @@ export default function ChatSheet({ visible, onClose, screenKey = 'default' }) {
       <View style={s.sheetHeader}>
         <View style={s.sheetHeaderLeft}>
           <View style={s.cerebralBadge}>
-            <Text style={s.cerebralBadgeText}>C</Text>
+            <Image source={LOGO} style={s.cerebralBadgeLogo} resizeMode="contain" />
           </View>
           <View>
             <Text style={s.sheetTitle}>Cerebral AI</Text>
@@ -313,11 +315,10 @@ const s = StyleSheet.create({
   sheetHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cerebralBadge: {
     width: 38, height: 38, borderRadius: 12,
-    backgroundColor: C.tealDim,
+    overflow: 'hidden',
     borderWidth: 1.5, borderColor: C.tealBorder,
-    alignItems: 'center', justifyContent: 'center',
   },
-  cerebralBadgeText: { fontSize: 17, fontWeight: '900', color: C.teal },
+  cerebralBadgeLogo: { width: 38, height: 38 },
   sheetTitle:        { fontSize: 15, fontWeight: '800', color: C.white },
   onlineRow:         { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   onlineDot:         { width: 6, height: 6, borderRadius: 3, backgroundColor: C.teal },
@@ -335,12 +336,11 @@ const s = StyleSheet.create({
   bubbleRowAI:   { justifyContent: 'flex-start' },
   aiBadge: {
     width: 26, height: 26, borderRadius: 8,
-    backgroundColor: C.tealDim,
+    overflow: 'hidden',
     borderWidth: 1, borderColor: C.tealBorder,
-    alignItems: 'center', justifyContent: 'center',
     marginRight: 8, flexShrink: 0,
   },
-  aiBadgeText: { fontSize: 11, fontWeight: '900', color: C.teal },
+  aiBadgeLogo: { width: 26, height: 26 },
   bubble:         { maxWidth: '80%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleUser:     { backgroundColor: C.teal, borderBottomRightRadius: 4 },
   bubbleAI:       { backgroundColor: C.card, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: C.border },

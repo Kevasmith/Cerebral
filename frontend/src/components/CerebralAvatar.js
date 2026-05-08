@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, Platform } from 'react-native';
+import { View, Image, Animated, StyleSheet, Platform } from 'react-native';
 
-const TEAL       = '#10C896';
-const CARD       = '#0D1520';
+const TEAL        = '#10C896';
 const TEAL_BORDER = 'rgba(16,200,150,0.35)';
+
+const LOGO = require('../../assets/logo-mark.png');
 
 export default function CerebralAvatar() {
   const pulse = useRef(new Animated.Value(0.3)).current;
@@ -21,7 +22,7 @@ export default function CerebralAvatar() {
     <View style={s.wrap}>
       <Animated.View style={[s.glow, { opacity: pulse }]} />
       <View style={s.avatar}>
-        <Text style={s.letter}>C</Text>
+        <Image source={LOGO} style={s.logo} resizeMode="contain" />
       </View>
     </View>
   );
@@ -56,15 +57,12 @@ const s = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: CARD,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: TEAL_BORDER,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  letter: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: TEAL,
+  logo: {
+    width: 34,
+    height: 34,
   },
 });
