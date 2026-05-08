@@ -32,15 +32,15 @@ export class Account {
   @Column({ type: 'varchar', length: 16, default: 'flinks' })
   provider: 'flinks' | 'plaid';
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   flinksAccountId: string | null;
 
   // Plaid-only identifiers. plaidAccessToken is encrypted at rest because
   // it's a long-lived credential.
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   plaidAccountId: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   plaidItemId: string | null;
 
   @Column({ type: 'text', nullable: true, transformer: encryptedTransformer })
