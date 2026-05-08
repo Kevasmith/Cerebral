@@ -26,6 +26,7 @@ import { HealthModule } from './modules/health/health.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { PlaidModule } from './modules/plaid/plaid.module';
+import { BankModule } from './modules/bank/bank.module';
 import { WaitlistEntry } from './entities/waitlist-entry.entity';
 import { Subscription } from './entities/subscription.entity';
 import { RlsInterceptor } from './common/rls/rls.interceptor';
@@ -109,6 +110,7 @@ import { rlsContext } from './common/rls/rls-context';
     BillingModule,
     WaitlistModule,
     PlaidModule,
+    BankModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

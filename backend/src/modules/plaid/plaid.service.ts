@@ -1,6 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotImplementedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
+import {
+  PlaidAccount,
+  PlaidExchangeResult,
+  PlaidLinkToken,
+  PlaidTransactionsSyncResult,
+} from './plaid.types';
 
 @Injectable()
 export class PlaidService {
@@ -39,6 +45,51 @@ export class PlaidService {
     this.client = new PlaidApi(configuration);
   }
 
-  // Method implementations land in steps 3–8 of the Plaid integration plan.
-  // Step 1 is scaffolding only — boot + DI verification.
+  // ─── API surface (bodies land in steps 3–8) ────────────────────────────────
+  // Step 2 declares signatures so PlaidAdapter compiles. Each method throws
+  // NotImplementedException at runtime; calling them before the corresponding
+  // step is implemented is a programmer error.
+
+  // Step 3
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async createLinkToken(userId: string): Promise<PlaidLinkToken> {
+    throw new NotImplementedException(
+      'PlaidService.createLinkToken — implemented in Plaid integration step 3',
+    );
+  }
+
+  // Step 4
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async exchangePublicToken(publicToken: string): Promise<PlaidExchangeResult> {
+    throw new NotImplementedException(
+      'PlaidService.exchangePublicToken — implemented in Plaid integration step 4',
+    );
+  }
+
+  // Step 4
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getAccounts(accessToken: string): Promise<PlaidAccount[]> {
+    throw new NotImplementedException(
+      'PlaidService.getAccounts — implemented in Plaid integration step 4',
+    );
+  }
+
+  // Step 4 / 8 (cursor support comes online with the webhook handler)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async syncTransactions(
+    accessToken: string,
+    cursor?: string,
+  ): Promise<PlaidTransactionsSyncResult> {
+    throw new NotImplementedException(
+      'PlaidService.syncTransactions — implemented in Plaid integration step 4',
+    );
+  }
+
+  // Step 8
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async verifyWebhook(rawBody: string, jwt: string): Promise<boolean> {
+    throw new NotImplementedException(
+      'PlaidService.verifyWebhook — implemented in Plaid integration step 8',
+    );
+  }
 }
