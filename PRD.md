@@ -118,7 +118,7 @@ Cerebral turns your real financial behavior into clear actions that help you sav
 
 ### 9.2 Bank Account Connection
 **Must Have:**
-- Connect Canadian banks via Flinks
+- Connect Canadian banks via Plaid
 - Fetch: accounts, balances, transactions
 
 **UX Goals:**
@@ -243,7 +243,7 @@ Generate personalized insights such as:
 | ORM | TypeORM |
 | Cache | Redis |
 | Auth | Better Auth |
-| Bank API | Flinks |
+| Bank API | Plaid |
 | AI | OpenAI GPT |
 | FE Hosting | Vercel |
 | BE Hosting | Railway |
