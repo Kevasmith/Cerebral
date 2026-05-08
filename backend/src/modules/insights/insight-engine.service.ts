@@ -75,7 +75,13 @@ export class InsightEngineService {
 
     this.logger.log(`Generated ${newInsights.length} new insights for user ${userId}`);
 
-    if (newInsights.length > 0 && user.expoPushToken) {
+    // Respect the user's notification preference. `notificationsEnabled`
+    // defaults to true on the entity, so an absent preference row counts as
+    // opted-in (matches the onboarding default). Only suppress when the user
+    // explicitly disabled notifications in Settings.
+    const notificationsAllowed = preference?.notificationsEnabled !== false;
+
+    if (newInsights.length > 0 && user.expoPushToken && notificationsAllowed) {
       const title = newInsights.length === 1
         ? newInsights[0].title
         : `${newInsights.length} new insights`;
