@@ -8,6 +8,7 @@ import CerebralAvatar from '../components/CerebralAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
+import { categoryMeta } from '../constants/categories';
 
 const IS_WEB = Platform.OS === 'web';
 const { width: SW } = Dimensions.get('window');
@@ -30,19 +31,19 @@ const C = {
   input:      'rgba(255,255,255,0.05)',
 };
 
-const SEGMENTS = [
-  { key: 'housing',       label: 'Housing',        amount: 4980.00,  pct: 0.40, color: C.purple },
-  { key: 'food',          label: 'Food & Dining',   amount: 3112.50,  pct: 0.25, color: C.green  },
-  { key: 'entertainment', label: 'Entertainment',   amount: 2490.00,  pct: 0.20, color: C.teal   },
-  { key: 'misc',          label: 'Miscellaneous',   amount: 1867.50,  pct: 0.15, color: '#64748B' },
-];
+const SEGMENTS = ['bills', 'food', 'entertainment', 'other'].map((key, i) => {
+  const meta = categoryMeta(key);
+  const pcts    = [0.40, 0.25, 0.20, 0.15];
+  const amounts = [4980.00, 3112.50, 2490.00, 1867.50];
+  return { key, label: meta.label, amount: amounts[i], pct: pcts[i], color: meta.color };
+});
 
 const TOTAL = 12450.00;
 
 const MOCK_TXN = [
-  { id: 1, name: "L'Artisan Bistro",       amount: -62.40,  category: 'Food',          icon: 'restaurant-outline'   },
-  { id: 2, name: 'Apple Store Retail',     amount: -299.00, category: 'Entertainment', icon: 'phone-portrait-outline' },
-  { id: 3, name: 'Metropolitan Housing',   amount: -1245.00, category: 'Housing',      icon: 'home-outline'         },
+  { id: 1, name: "L'Artisan Bistro",     amount:   -62.40, category: 'food'     },
+  { id: 2, name: 'Apple Store Retail',   amount:  -299.00, category: 'shopping' },
+  { id: 3, name: 'Metropolitan Housing', amount: -1245.00, category: 'bills'    },
 ];
 
 // ─── Donut chart ──────────────────────────────────────────────────────────────
@@ -129,16 +130,11 @@ function LegendRow({ segment }) {
 }
 
 // ─── Category badge ───────────────────────────────────────────────────────────
-function CategoryBadge({ label }) {
-  const map = {
-    Food:          { bg: 'rgba(34,197,94,0.15)',   color: C.green  },
-    Entertainment: { bg: C.tealDim,                color: C.teal   },
-    Housing:       { bg: C.purpleDim,              color: C.purple },
-  };
-  const s = map[label] ?? { bg: 'rgba(100,116,139,0.15)', color: '#64748B' };
+function CategoryBadge({ category }) {
+  const meta = categoryMeta(category);
   return (
-    <View style={[styles.catBadge, { backgroundColor: s.bg }]}>
-      <Text style={[styles.catBadgeText, { color: s.color }]}>{label}</Text>
+    <View style={[styles.catBadge, { backgroundColor: meta.colorDim }]}>
+      <Text style={[styles.catBadgeText, { color: meta.color }]}>{meta.label}</Text>
     </View>
   );
 }
@@ -146,14 +142,15 @@ function CategoryBadge({ label }) {
 // ─── Transaction row ──────────────────────────────────────────────────────────
 function TxRow({ tx }) {
   const neg = tx.amount < 0;
+  const meta = categoryMeta(tx.category);
   return (
     <View style={styles.txRow}>
-      <View style={styles.txIcon}>
-        <Ionicons name={tx.icon} size={16} color={C.teal} />
+      <View style={[styles.txIcon, { backgroundColor: meta.colorDim }]}>
+        <Ionicons name={meta.icon} size={16} color={meta.color} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.txName} numberOfLines={1}>{tx.name}</Text>
-        <CategoryBadge label={tx.category} />
+        <CategoryBadge category={tx.category} />
       </View>
       <Text style={[styles.txAmount, { color: neg ? '#EF4444' : C.teal }]}>
         {neg ? '-' : '+'}${Math.abs(tx.amount).toFixed(2)}

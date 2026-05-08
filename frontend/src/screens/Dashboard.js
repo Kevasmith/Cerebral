@@ -13,6 +13,7 @@ import {
   MOCK_DASHBOARD, MOCK_INSIGHTS, MOCK_SPENDING_BREAKDOWN,
   MOCK_TRANSACTIONS, MOCK_MONTHLY_SPENDING,
 } from '../data/mockData';
+import { categoryMeta } from '../constants/categories';
 
 const IS_WEB = Platform.OS === 'web';
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -31,24 +32,6 @@ const C = {
 const SHADOW = {
   shadowColor: '#0F172A', shadowOpacity: 0.08,
   shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 3,
-};
-
-const CATEGORY_COLORS = {
-  food: '#e67e22', transport: '#3498db', entertainment: '#9b59b6',
-  shopping: '#27ae60', bills: '#e74c3c', health: '#1abc9c',
-  travel: '#2980b9', other: '#95a5a6',
-};
-const CATEGORY_BUDGETS = {
-  food: 400, transport: 200, entertainment: 100,
-  shopping: 150, bills: 1500, health: 100, travel: 300, other: 100,
-};
-
-const TX_ICONS = {
-  food: 'restaurant-outline', transport: 'car-outline',
-  entertainment: 'film-outline', shopping: 'bag-handle-outline',
-  bills: 'home-outline', health: 'heart-outline',
-  income: 'cash-outline', transfer: 'swap-horizontal-outline',
-  other: 'ellipse-outline',
 };
 
 // Maps API insight types to visual tones
@@ -205,7 +188,7 @@ function TxRow({ tx, isLast }) {
     <View style={[styles.txRow, isLast && { borderBottomWidth: 0 }]}>
       <View style={[styles.txIconWrap, { backgroundColor: tx.isDebit ? '#fbeae6' : '#e6f3ec' }]}>
         <Ionicons
-          name={TX_ICONS[tx.category] ?? 'ellipse-outline'}
+          name={categoryMeta(tx.category).icon}
           size={16}
           color={tx.isDebit ? C.red : C.green}
         />
@@ -213,7 +196,7 @@ function TxRow({ tx, isLast }) {
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.txDesc} numberOfLines={1}>{tx.description}</Text>
         <Text style={styles.txMeta}>
-          {tx.category?.charAt(0).toUpperCase() + tx.category?.slice(1)} ·{' '}
+          {categoryMeta(tx.category).label} ·{' '}
           {new Date(tx.date).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}
         </Text>
       </View>
@@ -366,12 +349,15 @@ export default function Dashboard() {
   }
 
   const spending = snapshot?.spendingByCategory?.length > 0
-    ? snapshot.spendingByCategory.map((s) => ({
-        category: s.category.charAt(0).toUpperCase() + s.category.slice(1),
-        amount:   s.total,
-        color:    CATEGORY_COLORS[s.category] ?? '#95a5a6',
-        budget:   CATEGORY_BUDGETS[s.category] ?? Math.ceil(s.total * 1.25),
-      }))
+    ? snapshot.spendingByCategory.map((s) => {
+        const meta = categoryMeta(s.category);
+        return {
+          category: meta.label,
+          amount:   s.total,
+          color:    meta.color,
+          budget:   meta.budget > 0 ? meta.budget : Math.ceil(s.total * 1.25),
+        };
+      })
     : MOCK_SPENDING_BREAKDOWN;
 
   const firstName = profile?.displayName ? profile.displayName.split(' ')[0] : null;

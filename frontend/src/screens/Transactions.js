@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import Skeleton from '../components/Skeleton';
 import { MOCK_TRANSACTIONS } from '../data/mockData';
+import { CATEGORY_KEYS, categoryMeta } from '../constants/categories';
 
 const IS_WEB = Platform.OS === 'web';
 const WEB_GRADIENT = IS_WEB
@@ -37,7 +38,7 @@ function TransactionSkeleton() {
 
 const skeletonRow = { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#ECE8DC' };
 
-const CATEGORIES = ['all', 'food', 'transport', 'entertainment', 'shopping', 'bills', 'health', 'travel', 'income', 'transfer', 'other'];
+const CATEGORIES = ['all', ...CATEGORY_KEYS];
 const PERIODS = ['Week', 'Month', 'Quarter', 'YTD', 'Custom'];
 const LIMIT = 20;
 
@@ -75,7 +76,7 @@ function TransactionItem({ item }) {
     <View style={styles.item}>
       <View style={{ flex: 1 }}>
         <Text style={styles.desc}>{item.description || item.merchantName || 'Transaction'}</Text>
-        <Text style={styles.meta}>{item.category} • {new Date(item.date).toLocaleDateString()}</Text>
+        <Text style={styles.meta}>{categoryMeta(item.category).label} • {new Date(item.date).toLocaleDateString()}</Text>
       </View>
       <Text style={[styles.amount, { color: item.isDebit ? '#EF4444' : '#0a9165' }]}>
         {item.isDebit ? '-' : '+'}${Math.abs(Number(item.amount)).toFixed(2)}
@@ -260,7 +261,9 @@ export default function Transactions() {
                 onPress={() => setCategory(c)}
                 style={[styles.catBtn, category === c && styles.catBtnActive]}
               >
-                <Text style={[styles.catText, category === c && styles.catTextActive]}>{c}</Text>
+                <Text style={[styles.catText, category === c && styles.catTextActive]}>
+                  {c === 'all' ? 'All' : categoryMeta(c).label}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
