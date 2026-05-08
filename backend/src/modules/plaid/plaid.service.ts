@@ -1,10 +1,10 @@
 import {
   Injectable,
   Logger,
-  NotImplementedException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import {
   Configuration,
   CountryCode,
@@ -19,12 +19,22 @@ import {
   PlaidTransactionsSyncResult,
 } from './plaid.types';
 
+interface CachedJwk {
+  /** JWK in JSON form, ready for crypto.createPublicKey({format:'jwk'}). */
+  key: { kty: string; crv: string; x: string; y: string; alg: string };
+  fetchedAt: number;
+}
+
+const JWK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const WEBHOOK_MAX_AGE_S = 5 * 60; // 5-minute clock-skew tolerance per Plaid recs
+
 @Injectable()
 export class PlaidService {
   private readonly logger = new Logger(PlaidService.name);
   private readonly client: PlaidApi;
   private readonly env: string;
   private readonly hasCredentials: boolean;
+  private readonly jwkCache = new Map<string, CachedJwk>();
 
   constructor(private readonly config: ConfigService) {
     this.env = config.get<string>('PLAID_ENV') ?? 'sandbox';
@@ -170,11 +180,81 @@ export class PlaidService {
     }
   }
 
-  // Step 8
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Step 8 — implemented.
+  // Plaid signs every webhook request with an ES256 JWT in the
+  // `Plaid-Verification` header. The JWT's claims include a SHA-256 hash of
+  // the raw request body so we can confirm the body wasn't tampered with.
+  // See https://plaid.com/docs/api/webhooks/webhook-verification/.
   async verifyWebhook(rawBody: string, jwt: string): Promise<boolean> {
-    throw new NotImplementedException(
-      'PlaidService.verifyWebhook — implemented in Plaid integration step 8',
-    );
+    if (!jwt || !this.hasCredentials) return false;
+
+    const parts = jwt.split('.');
+    if (parts.length !== 3) return false;
+    const [headerB64, payloadB64, sigB64] = parts;
+
+    let header: { alg?: string; kid?: string };
+    let claims: { request_body_sha256?: string; iat?: number };
+    try {
+      header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
+      claims = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    } catch {
+      return false;
+    }
+
+    if (header.alg !== 'ES256' || !header.kid) return false;
+
+    // 1. Resolve the public key for this kid (cached for 24h).
+    const cached = this.jwkCache.get(header.kid);
+    let jwk: CachedJwk['key'];
+    if (cached && Date.now() - cached.fetchedAt < JWK_CACHE_TTL_MS) {
+      jwk = cached.key;
+    } else {
+      try {
+        const { data } = await this.client.webhookVerificationKeyGet({
+          key_id: header.kid,
+        });
+        jwk = {
+          kty: data.key.kty,
+          crv: data.key.crv,
+          x: data.key.x,
+          y: data.key.y,
+          alg: 'ES256',
+        };
+        this.jwkCache.set(header.kid, { key: jwk, fetchedAt: Date.now() });
+      } catch (err) {
+        this.logger.warn(`Plaid webhookVerificationKeyGet failed for kid=${header.kid}: ${(err as Error).message}`);
+        return false;
+      }
+    }
+
+    // 2. Verify the JWT signature. Node's crypto.verify with
+    // dsaEncoding:'ieee-p1363' handles JWS-style raw r||s signatures directly.
+    let signatureValid = false;
+    try {
+      const publicKey = crypto.createPublicKey({ key: jwk as any, format: 'jwk' });
+      const signedData = `${headerB64}.${payloadB64}`;
+      signatureValid = crypto.verify(
+        'sha256',
+        Buffer.from(signedData),
+        { key: publicKey, dsaEncoding: 'ieee-p1363' },
+        Buffer.from(sigB64, 'base64url'),
+      );
+    } catch (err) {
+      this.logger.warn(`Plaid JWT signature check threw: ${(err as Error).message}`);
+      return false;
+    }
+    if (!signatureValid) return false;
+
+    // 3. Verify the body hash claim matches the actual body.
+    const bodyHash = crypto.createHash('sha256').update(rawBody).digest('hex');
+    if (claims.request_body_sha256 !== bodyHash) return false;
+
+    // 4. Reject stale tokens (replay protection).
+    const now = Math.floor(Date.now() / 1000);
+    if (typeof claims.iat === 'number' && now - claims.iat > WEBHOOK_MAX_AGE_S) {
+      return false;
+    }
+
+    return true;
   }
 }

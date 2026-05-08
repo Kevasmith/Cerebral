@@ -77,13 +77,111 @@ export class AccountsService {
       ),
     );
 
-    // 4. Pull initial transactions cursor + persist
+    // 4. Pull initial transactions and persist (no cursor on first run).
     const { transactions, nextCursor } = await provider.fetchTransactions(
       accessToken,
     );
+    await this.upsertPlaidTransactions(saved, transactions, nextCursor);
 
+    return saved;
+  }
+
+  /**
+   * Webhook dispatcher. Plaid pushes here when an item's transactions update,
+   * an item errors, or a user revokes permission. JWT verification has already
+   * happened in PlaidWebhookController before this is called.
+   */
+  async handlePlaidWebhook(payload: any): Promise<void> {
+    const type = payload?.webhook_type;
+    const code = payload?.webhook_code;
+    const itemId = payload?.item_id;
+
+    this.logger.log(`Plaid webhook: ${type}:${code} for item ${itemId}`);
+    if (!itemId) return;
+
+    switch (`${type}:${code}`) {
+      case 'TRANSACTIONS:DEFAULT_UPDATE':
+      case 'TRANSACTIONS:HISTORICAL_UPDATE':
+      case 'TRANSACTIONS:SYNC_UPDATES_AVAILABLE':
+        await this.refreshTransactionsForItem(itemId);
+        return;
+
+      case 'ITEM:ERROR':
+        this.logger.warn(
+          `Plaid item error for ${itemId}: ${JSON.stringify(payload.error)}`,
+        );
+        // TODO: surface a "reconnect bank" prompt to the user (push + UI).
+        return;
+
+      case 'ITEM:USER_PERMISSION_REVOKED':
+      case 'ITEM:PENDING_DISCONNECT':
+        this.logger.warn(`Plaid access revoked for item ${itemId}`);
+        // TODO: soft-delete affected accounts.
+        return;
+
+      default:
+        // Many webhook types we don't handle yet — log at debug and ignore.
+        this.logger.debug(`Unhandled Plaid webhook: ${type}:${code}`);
+    }
+  }
+
+  /**
+   * Webhook-driven re-sync. Fetches transactions for the Plaid item using
+   * its persisted access_token + cursor, persists new ones, and updates the
+   * cursor. Idempotent — duplicate transactionsSync calls return the same
+   * deltas (cursor advances atomically when we save).
+   */
+  async refreshTransactionsForItem(itemId: string): Promise<void> {
+    const accounts = await this.accountRepo.find({
+      where: { plaidItemId: itemId, provider: 'plaid' },
+    });
+    if (accounts.length === 0) {
+      this.logger.warn(`refreshTransactionsForItem: no accounts for item ${itemId}`);
+      return;
+    }
+
+    const accessToken = accounts[0].plaidAccessToken;
+    if (!accessToken) {
+      this.logger.warn(`refreshTransactionsForItem: no access token for item ${itemId}`);
+      return;
+    }
+
+    const provider = this.bankProviderRouter.forProvider('plaid');
+    const { transactions, nextCursor } = await provider.fetchTransactions(
+      accessToken,
+      { cursor: accounts[0].plaidTxCursor ?? undefined },
+    );
+
+    await this.upsertPlaidTransactions(accounts, transactions, nextCursor);
+
+    this.logger.log(
+      `refreshTransactionsForItem ${itemId}: ${transactions.length} new/modified transactions`,
+    );
+  }
+
+  /**
+   * Shared transaction-persistence helper used by both initial sync and
+   * webhook re-sync. Dedups by plaidTransactionId; advances the cursor on
+   * every account that belongs to this Plaid item.
+   */
+  private async upsertPlaidTransactions(
+    accounts: Account[],
+    transactions: Array<{
+      externalTransactionId: string;
+      externalAccountId: string;
+      description: string;
+      merchantName: string | null;
+      amount: number;
+      isDebit: boolean;
+      currency: string | null;
+      date: string;
+      pending: boolean;
+      providerPrimaryCategory?: string | null;
+    }>,
+    nextCursor?: string,
+  ): Promise<void> {
     const accountByExternalId = new Map(
-      saved.map((a) => [a.plaidAccountId, a] as const),
+      accounts.map((a) => [a.plaidAccountId, a] as const),
     );
 
     for (const t of transactions) {
@@ -107,18 +205,14 @@ export class AccountsService {
       });
     }
 
-    // 5. Persist cursor on every account from this item so the next sync
-    // resumes from where this one ended.
     if (nextCursor) {
       await Promise.all(
-        saved.map((a) => {
+        accounts.map((a) => {
           a.plaidTxCursor = nextCursor;
           return this.accountRepo.save(a);
         }),
       );
     }
-
-    return saved;
   }
 
   private async upsertPlaidAccount(
