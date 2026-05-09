@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import Skeleton from '../components/Skeleton';
-import { MOCK_TRANSACTIONS } from '../data/mockData';
 import { CATEGORY_KEYS, categoryMeta } from '../constants/categories';
 
 const IS_WEB = Platform.OS === 'web';
@@ -119,16 +118,8 @@ export default function Transactions() {
       setError(null);
     } catch (e) {
       if (!append) {
-        setError('Could not load transactions. Showing recent activity.');
-        let filtered = cat === 'all' ? MOCK_TRANSACTIONS : MOCK_TRANSACTIONS.filter(t => t.category === cat);
-        if (searchTerm.trim()) {
-          const term = searchTerm.trim().toLowerCase();
-          filtered = filtered.filter(t =>
-            (t.description || '').toLowerCase().includes(term) ||
-            (t.merchantName || '').toLowerCase().includes(term)
-          );
-        }
-        setTransactions(filtered);
+        setError('Could not load transactions.');
+        setTransactions([]);
         setHasMore(false);
       }
     } finally {
@@ -233,8 +224,8 @@ export default function Transactions() {
           ))}
         </ScrollView>
 
-        {/* Behavioral AI insight */}
-        <BehavioralInsight />
+        {/* Behavioral AI insight — only when we have transactions to analyze */}
+        {transactions.length > 0 && <BehavioralInsight />}
 
         {/* Search + category filter */}
         <View style={styles.searchRow}>

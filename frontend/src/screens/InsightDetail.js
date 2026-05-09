@@ -1,13 +1,11 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, Dimensions, Animated,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 const IS_WEB = Platform.OS === 'web';
-const { width: SW } = Dimensions.get('window');
 
 const C = {
   bg:        '#080E14',
@@ -23,85 +21,39 @@ const C = {
   border:    'rgba(255,255,255,0.07)',
 };
 
-// ─── Savings chart (SVG on web, view-based on native) ─────────────────────────
-function SavingsChart() {
-  const points = [0, 0, 0, 19, 57, 114, 171, 190, 210, 228];
-  const maxVal = 228;
-  const W = Math.min(SW - 48, 640);
-  const H = 110;
-  const labels = ['JAN', 'MAR', 'JUN', 'SEP', 'DEC'];
+// ─── Main screen ──────────────────────────────────────────────────────────────
+const TYPE_TO_BADGE = {
+  overspending: 'Risk Alert',
+  idle_cash: 'Optimization Found',
+  income_trend: 'Wealth Building',
+  opportunity: 'Opportunity',
+  savings_tip: 'Tip',
+};
+const TYPE_TO_ICON = {
+  overspending: 'warning-outline',
+  idle_cash: 'wallet-outline',
+  income_trend: 'trending-up-outline',
+  opportunity: 'compass-outline',
+  savings_tip: 'bulb-outline',
+};
 
-  if (IS_WEB) {
-    const pts = points.map((v, i) => {
-      const x = (i / (points.length - 1)) * W;
-      const y = H - (v / maxVal) * H;
-      return `${x},${y}`;
-    }).join(' ');
-    const areaPath = `M ${pts.replace(/ /g, ' L ')} L ${W},${H} L 0,${H} Z`;
-    const linePath = `M ${pts.replace(/ /g, ' L ')}`;
+export default function InsightDetail({ navigation, route }) {
+  const insets = useSafeAreaInsets();
+  const insight = route?.params?.insight;
 
+  if (!insight) {
     return (
-      <View style={styles.chartWrap}>
-        <View style={{ width: W, height: H }}>
-          <svg
-            width={W} height={H}
-            style={{ display: 'block', overflow: 'visible' }}
-          >
-            <defs>
-              <linearGradient id="chartGrad" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={C.teal} stopOpacity="0.18" />
-                <stop offset="100%" stopColor={C.teal} stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path d={areaPath} fill="url(#chartGrad)" />
-            <path d={linePath} fill="none" stroke={C.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx={W} cy={0} r="4" fill={C.teal} />
-          </svg>
-        </View>
-        <View style={styles.chartLabels}>
-          {labels.map(l => (
-            <Text key={l} style={styles.chartLabel}>{l}</Text>
-          ))}
-        </View>
+      <View style={[styles.root, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: C.muted }}>No insight selected.</Text>
+        <TouchableOpacity onPress={() => navigation?.goBack()} style={{ marginTop: 16 }}>
+          <Text style={{ color: C.teal, fontWeight: '700' }}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  // Native: simplified line using absolute views
-  return (
-    <View style={styles.chartWrap}>
-      <View style={{ height: H, justifyContent: 'flex-end' }}>
-        <View style={{
-          height: 2, backgroundColor: C.teal,
-          borderRadius: 1,
-          marginHorizontal: 4,
-          transform: [{ rotate: '-4deg' }],
-          alignSelf: 'stretch',
-        }} />
-      </View>
-      <View style={styles.chartLabels}>
-        {labels.map(l => (
-          <Text key={l} style={styles.chartLabel}>{l}</Text>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// ─── Billing row ──────────────────────────────────────────────────────────────
-function BillRow({ date, amount }) {
-  return (
-    <View style={styles.billRow}>
-      <Text style={styles.billDate}>{date}</Text>
-      <Text style={styles.billAmount}>{amount}</Text>
-    </View>
-  );
-}
-
-// ─── Main screen ──────────────────────────────────────────────────────────────
-export default function InsightDetail({ navigation, route }) {
-  const insets = useSafeAreaInsets();
-  const insight = route?.params?.insight ?? MOCK_INSIGHT;
+  const badgeLabel = TYPE_TO_BADGE[insight.type] ?? 'Insight';
+  const iconName   = TYPE_TO_ICON[insight.type] ?? 'sparkles-outline';
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -134,107 +86,36 @@ export default function InsightDetail({ navigation, route }) {
         {/* Badge */}
         <View style={styles.badge}>
           <View style={styles.badgeDot} />
-          <Text style={styles.badgeText}>Optimization Found</Text>
+          <Text style={styles.badgeText}>{badgeLabel}</Text>
         </View>
 
         {/* Main insight card */}
         <View style={styles.insightCard}>
           <View style={styles.insightTop}>
             <View style={styles.insightIcon}>
-              <Ionicons name="tv-outline" size={20} color={C.teal} />
+              <Ionicons name={iconName} size={20} color={C.teal} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.insightTitle, IS_WEB && { fontFamily: 'Geist' }]}>
                 {insight.title}
               </Text>
               <Text style={styles.insightBody}>
-                {insight.descriptionPrefix}
-                <Text style={styles.insightHighlight}>{insight.highlight}</Text>
-                {insight.descriptionSuffix}
-                <Text style={styles.insightAmount}> {insight.savingsLabel}</Text>
+                {insight.body ?? insight.description ?? ''}
               </Text>
             </View>
           </View>
-
-          {/* AI Reasoning */}
-          <View style={styles.reasoningCard}>
-            <View style={styles.sectionLabel}>
-              <Ionicons name="hardware-chip-outline" size={11} color={C.teal} />
-              <Text style={styles.sectionLabelText}>AI REASONING</Text>
-            </View>
-
-            <View style={styles.statRow}>
-              <Text style={styles.statKey}>Usage Stats</Text>
-              <Text style={styles.statVal}>{insight.usageStat}</Text>
-            </View>
-            <View style={styles.statDotRow}>
-              <View style={styles.redDot} />
-              <Text style={styles.statNote}>{insight.reasoning}</Text>
-            </View>
-
-            <View style={[styles.sectionLabel, { marginTop: 18 }]}>
-              <Ionicons name="time-outline" size={11} color={C.teal} />
-              <Text style={styles.sectionLabelText}>BILLING HISTORY</Text>
-            </View>
-            {insight.billingHistory.map((b, i) => (
-              <BillRow key={i} date={b.date} amount={b.amount} />
-            ))}
-          </View>
         </View>
 
-        {/* Projected Impact */}
-        <View style={styles.impactRow}>
-          <View>
-            <Text style={[styles.impactLabel, IS_WEB && { fontFamily: 'Geist' }]}>Projected{'\n'}Impact</Text>
-            <Text style={styles.impactSub}>Cumulative 12-month{'\n'}trajectory</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.impactAmount, IS_WEB && { fontFamily: 'Geist' }]}>
-              {insight.projectedSavings}
-            </Text>
-            <Text style={styles.impactCaption}>TOTAL POTENTIAL{'\n'}SAVINGS</Text>
-          </View>
-        </View>
-
-        <View style={styles.chartCard}>
-          <SavingsChart />
-        </View>
-
-        {/* CTAs */}
-        <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85}>
-          <Ionicons name="close-circle" size={18} color={C.bg} />
-          <Text style={[styles.primaryBtnText, IS_WEB && { fontFamily: 'Geist' }]}>
-            Cancel Subscription via Cerebral
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.7}>
+        {/* CTA */}
+        <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.7} onPress={() => navigation?.goBack()}>
           <Text style={[styles.secondaryBtnText, IS_WEB && { fontFamily: 'Geist' }]}>
-            Keep Subscription
+            Got it
           </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK_INSIGHT = {
-  title: 'Unused Subscription',
-  descriptionPrefix: 'We detected you\'ve paid for ',
-  highlight: '"StreamMax"',
-  descriptionSuffix: ' for 3 months without any usage. Canceling this will save you',
-  savingsLabel: '$18.99/month.',
-  usageStat: '0 minutes',
-  reasoning: 'Activity threshold is below the 5th percentile\nfor active accounts in your profile group.',
-  billingHistory: [
-    { date: 'Oct 12', amount: '$18.99' },
-    { date: 'Nov 12', amount: '$18.99' },
-    { date: 'Dec 12', amount: '$18.99' },
-  ],
-  projectedSavings: '$227.88',
-  monthlySaving: 18.99,
-};
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({

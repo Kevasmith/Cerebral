@@ -9,10 +9,6 @@ import { useNavigation } from '@react-navigation/native';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
 import Skeleton from '../components/Skeleton';
-import {
-  MOCK_DASHBOARD, MOCK_INSIGHTS, MOCK_SPENDING_BREAKDOWN,
-  MOCK_TRANSACTIONS, MOCK_MONTHLY_SPENDING,
-} from '../data/mockData';
 import { categoryMeta } from '../constants/categories';
 
 const IS_WEB = Platform.OS === 'web';
@@ -95,21 +91,29 @@ function NetWorthBlock({ data }) {
   const fmt = (n) =>
     Number(n).toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
+  const trend = data?.spendingTrend;
+  const trendPct = trend?.percentageChange ?? trend?.percentChange;
+  const showTrend = typeof trendPct === 'number' && trend?.direction;
+  const trendUp = trend?.direction === 'up';
+
   return (
     <View style={styles.networthCard}>
       <View style={styles.networthTopRow}>
         <Text style={styles.networthLabel}>TOTAL NET WORTH</Text>
-        <View style={styles.changeBadge}>
-          <Ionicons name="trending-up" size={12} color={C.green} />
-          <Text style={styles.changeBadgeText}>+2.4%</Text>
-        </View>
+        {showTrend && (
+          <View style={styles.changeBadge}>
+            <Ionicons name={trendUp ? 'trending-up' : 'trending-down'} size={12} color={C.green} />
+            <Text style={styles.changeBadgeText}>
+              {trendUp ? '+' : '−'}{Math.abs(trendPct).toFixed(1)}%
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.amountRow}>
         <Text style={[styles.networthAmount, IS_WEB && { fontFamily: 'Geist' }]}>
-          ${fmt(data?.totalCashAvailable ?? 1248392)}
+          ${fmt(data?.totalCashAvailable ?? 0)}
         </Text>
-        <Text style={styles.amountCents}>.42</Text>
       </View>
 
       {IS_WEB ? <SparklineWeb /> : <SparklineNative />}
@@ -136,8 +140,7 @@ function PulseCard() {
         <View style={styles.pulseLiveDot} />
       </View>
       <Text style={[styles.pulseTitle, IS_WEB && { fontFamily: 'Geist' }]}>
-        Outperforming the benchmark by{' '}
-        <Text style={{ color: C.green }}>+1.2%</Text> today.
+        Watching your accounts in real time.
       </Text>
       <Text style={styles.pulseBody}>
         No urgent actions required. I'll keep watch and ping you if anything moves.
@@ -210,7 +213,8 @@ function TxRow({ tx, isLast }) {
 // ─── Spending Chart ───────────────────────────────────────────────────────────
 
 function SpendingChart({ data }) {
-  const max     = Math.max(...data.map((d) => d.amount));
+  if (!data?.length) return null;
+  const max     = Math.max(...data.map((d) => d.amount), 1);
   const current = data[data.length - 1];
   return (
     <View style={styles.card}>
@@ -245,6 +249,7 @@ function SpendingChart({ data }) {
 // ─── Budget Tracker ───────────────────────────────────────────────────────────
 
 function BudgetTracker({ data }) {
+  if (!data?.length) return null;
   const totalBudget = data.reduce((s, c) => s + c.budget, 0);
   const totalSpent  = data.reduce((s, c) => s + c.amount, 0);
   const overCount   = data.filter((c) => c.amount > c.budget).length;
@@ -291,7 +296,7 @@ export default function Dashboard() {
   const [refreshing, setRefreshing]     = useState(false);
   const [snapshot, setSnapshot]         = useState(null);
   const [insights, setInsights]         = useState([]);
-  const [transactions, setTransactions] = useState(MOCK_TRANSACTIONS);
+  const [transactions, setTransactions] = useState([]);
   const { profile } = useAuthStore();
   const navigation  = useNavigation();
   const insets      = useSafeAreaInsets();
@@ -301,7 +306,7 @@ export default function Dashboard() {
     try {
       const r = await api.get('/accounts/dashboard');
       setSnapshot(r.data);
-    } catch { setSnapshot(MOCK_DASHBOARD); }
+    } catch { setSnapshot(null); }
     try {
       let data = [];
       const r = await api.get('/insights');
@@ -310,14 +315,14 @@ export default function Dashboard() {
         const r2 = await api.post('/insights/refresh');
         data = r2.data ?? [];
       }
-      setInsights(data.length > 0 ? data : MOCK_INSIGHTS);
-    } catch { setInsights(MOCK_INSIGHTS); }
+      setInsights(data);
+    } catch { setInsights([]); }
     try {
       const r    = await api.get('/transactions', { params: { limit: 4 } });
       const data = r.data ?? {};
       const items = Array.isArray(data) ? data : (data.transactions ?? []);
-      if (items.length > 0) setTransactions(items);
-    } catch { /* keep mock */ }
+      setTransactions(items);
+    } catch { setTransactions([]); }
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -348,19 +353,27 @@ export default function Dashboard() {
     );
   }
 
-  const spending = snapshot?.spendingByCategory?.length > 0
-    ? snapshot.spendingByCategory.map((s) => {
-        const meta = categoryMeta(s.category);
-        return {
-          category: meta.label,
-          amount:   s.total,
-          color:    meta.color,
-          budget:   meta.budget > 0 ? meta.budget : Math.ceil(s.total * 1.25),
-        };
-      })
-    : MOCK_SPENDING_BREAKDOWN;
+  const spending = (snapshot?.spendingByCategory ?? []).map((s) => {
+    const meta = categoryMeta(s.category);
+    return {
+      category: meta.label,
+      amount:   s.total,
+      color:    meta.color,
+      budget:   meta.budget > 0 ? meta.budget : Math.ceil(s.total * 1.25),
+    };
+  });
 
   const firstName = profile?.displayName ? profile.displayName.split(' ')[0] : null;
+
+  // Build monthly data from whatever we have; chart hides itself if empty.
+  const monthlyData = (() => {
+    const t = snapshot?.spendingTrend;
+    if (!t) return [];
+    const series = [];
+    if (typeof t.previousMonth === 'number') series.push({ month: 'Prev', amount: t.previousMonth });
+    if (typeof t.currentMonth === 'number')  series.push({ month: 'Now',  amount: t.currentMonth });
+    return series;
+  })();
 
   return (
     <ScrollView
@@ -402,7 +415,7 @@ export default function Dashboard() {
         {IS_WEB ? (
           <>
             <View style={styles.webRow}>
-              <View style={styles.webCol}><SpendingChart data={MOCK_MONTHLY_SPENDING} /></View>
+              <View style={styles.webCol}><SpendingChart data={monthlyData} /></View>
               <View style={styles.webCol}><BudgetTracker data={spending} /></View>
             </View>
 
@@ -438,7 +451,7 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            <SpendingChart data={MOCK_MONTHLY_SPENDING} />
+            <SpendingChart data={monthlyData} />
 
             {/* Cerebral Insights */}
             {insights.length > 0 && (

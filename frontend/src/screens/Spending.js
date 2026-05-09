@@ -31,20 +31,7 @@ const C = {
   input:      'rgba(255,255,255,0.05)',
 };
 
-const SEGMENTS = ['bills', 'food', 'entertainment', 'other'].map((key, i) => {
-  const meta = categoryMeta(key);
-  const pcts    = [0.40, 0.25, 0.20, 0.15];
-  const amounts = [4980.00, 3112.50, 2490.00, 1867.50];
-  return { key, label: meta.label, amount: amounts[i], pct: pcts[i], color: meta.color };
-});
-
-const TOTAL = 12450.00;
-
-const MOCK_TXN = [
-  { id: 1, name: "L'Artisan Bistro",     amount:   -62.40, category: 'food'     },
-  { id: 2, name: 'Apple Store Retail',   amount:  -299.00, category: 'shopping' },
-  { id: 3, name: 'Metropolitan Housing', amount: -1245.00, category: 'bills'    },
-];
+// Spending segments + total are derived from /accounts/dashboard at runtime.
 
 // ─── Donut chart ──────────────────────────────────────────────────────────────
 function DonutChart({ segments, total }) {
@@ -54,6 +41,7 @@ function DonutChart({ segments, total }) {
   const R  = size * 0.38;
   const strokeW = size * 0.12;
   const gap = 0.02; // radians between segments
+  const totalLabel = `$${Number(total ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
   if (IS_WEB) {
     let cursor = -Math.PI / 2;
@@ -91,9 +79,7 @@ function DonutChart({ segments, total }) {
         </svg>
         <View style={styles.donutCenter}>
           <Text style={[styles.donutLabel, IS_WEB && { fontFamily: 'Geist' }]}>Total Spend</Text>
-          <Text style={[styles.donutAmount, IS_WEB && { fontFamily: 'Geist' }]}>
-            ${TOTAL.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </Text>
+          <Text style={[styles.donutAmount, IS_WEB && { fontFamily: 'Geist' }]}>{totalLabel}</Text>
         </View>
       </View>
     );
@@ -105,9 +91,7 @@ function DonutChart({ segments, total }) {
       <View style={[styles.donutRingNative, { width: size, height: size, borderRadius: size / 2, borderColor: C.teal }]} />
       <View style={styles.donutCenter}>
         <Text style={styles.donutLabel}>Total Spend</Text>
-        <Text style={[styles.donutAmount, IS_WEB && { fontFamily: 'Geist' }]}>
-          ${TOTAL.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-        </Text>
+        <Text style={[styles.donutAmount, IS_WEB && { fontFamily: 'Geist' }]}>{totalLabel}</Text>
       </View>
     </View>
   );
@@ -141,7 +125,10 @@ function CategoryBadge({ category }) {
 
 // ─── Transaction row ──────────────────────────────────────────────────────────
 function TxRow({ tx }) {
-  const neg = tx.amount < 0;
+  // Live API: { amount: positive, isDebit: bool }; legacy mock: { amount: signed }
+  const neg = tx.isDebit ?? tx.amount < 0;
+  const amt = Math.abs(Number(tx.amount));
+  const name = tx.name ?? tx.description ?? tx.merchantName ?? 'Transaction';
   const meta = categoryMeta(tx.category);
   return (
     <View style={styles.txRow}>
@@ -149,11 +136,11 @@ function TxRow({ tx }) {
         <Ionicons name={meta.icon} size={16} color={meta.color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.txName} numberOfLines={1}>{tx.name}</Text>
+        <Text style={styles.txName} numberOfLines={1}>{name}</Text>
         <CategoryBadge category={tx.category} />
       </View>
       <Text style={[styles.txAmount, { color: neg ? '#EF4444' : C.teal }]}>
-        {neg ? '-' : '+'}${Math.abs(tx.amount).toFixed(2)}
+        {neg ? '-' : '+'}${amt.toFixed(2)}
       </Text>
     </View>
   );
@@ -163,14 +150,46 @@ function TxRow({ tx }) {
 export default function Spending({ navigation }) {
   const insets = useSafeAreaInsets();
   const [chatOpen, setChatOpen] = useState(false);
-  const [patternExpanded, setPatternExpanded] = useState(false);
-  const [txns, setTxns] = useState(MOCK_TXN);
+  const [txns, setTxns] = useState([]);
+  const [snapshot, setSnapshot] = useState(null);
 
   useEffect(() => {
-    api.get('/transactions?limit=3')
-      .then(r => { if (r.data?.length) setTxns(r.data); })
-      .catch(() => {});
+    api.get('/accounts/dashboard')
+      .then(r => setSnapshot(r.data ?? null))
+      .catch(() => setSnapshot(null));
+    api.get('/transactions', { params: { limit: 3 } })
+      .then(r => {
+        const data = r.data ?? {};
+        const items = Array.isArray(data) ? data : (data.transactions ?? []);
+        setTxns(items);
+      })
+      .catch(() => setTxns([]));
   }, []);
+
+  // Build donut segments from snapshot.spendingByCategory
+  const byCat = snapshot?.spendingByCategory ?? [];
+  const total = byCat.reduce((s, c) => s + Number(c.total ?? 0), 0);
+  const segments = total > 0
+    ? byCat.map((c) => {
+        const meta = categoryMeta(c.category);
+        return {
+          key: c.category,
+          label: meta.label,
+          amount: Number(c.total ?? 0),
+          pct: Number(c.total ?? 0) / total,
+          color: meta.color,
+        };
+      })
+    : [];
+
+  const trend = snapshot?.spendingTrend;
+  const showTrend =
+    trend &&
+    typeof trend.percentageChange === 'number' &&
+    typeof trend.previousMonth === 'number' &&
+    typeof trend.currentMonth === 'number';
+  const trendDelta = showTrend ? trend.currentMonth - trend.previousMonth : 0;
+  const trendUp    = showTrend && trend.direction === 'up';
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -194,125 +213,45 @@ export default function Spending({ navigation }) {
         <Text style={[styles.pageTitle, IS_WEB && { fontFamily: 'Geist' }]}>Spending Analysis</Text>
         <Text style={styles.pageSub}>Real-time overview of your capital allocation</Text>
 
-        {/* Date range chip */}
+        {/* Date range chip — current month */}
         <View style={styles.dateChip}>
           <Ionicons name="calendar-outline" size={13} color={C.teal} />
-          <Text style={styles.dateChipText}>Aug 2023 – Sep 2023</Text>
-          <Ionicons name="options-outline" size={13} color={C.faint} style={{ marginLeft: 4 }} />
+          <Text style={styles.dateChipText}>
+            {new Date().toLocaleString('en-CA', { month: 'long', year: 'numeric' })}
+          </Text>
         </View>
 
-        {/* Donut + legend card */}
-        <View style={styles.chartCard}>
-          <View style={styles.donutRow}>
-            <DonutChart segments={SEGMENTS} total={TOTAL} />
+        {/* Donut + legend card — only render with real spending data */}
+        {segments.length > 0 ? (
+          <View style={styles.chartCard}>
+            <View style={styles.donutRow}>
+              <DonutChart segments={segments} total={total} />
+            </View>
+            <View style={styles.legendList}>
+              {segments.map(s => <LegendRow key={s.key} segment={s} />)}
+            </View>
           </View>
-          <View style={styles.legendList}>
-            {SEGMENTS.map(s => <LegendRow key={s.key} segment={s} />)}
-          </View>
-        </View>
+        ) : null}
 
-        {/* VS Last Month */}
-        <View style={styles.vsCard}>
-          <View style={styles.vsLeft}>
-            <Text style={styles.vsEyebrow}>VS LAST MONTH</Text>
-            <View style={styles.vsAmountRow}>
-              <Text style={[styles.vsAmount, IS_WEB && { fontFamily: 'Geist' }]}>-$1,240</Text>
-              <View style={styles.vsPill}>
-                <Ionicons name="trending-up" size={11} color={C.teal} />
-                <Text style={styles.vsPillText}>+9.1%</Text>
+        {/* VS Last Month — only when both months have data */}
+        {showTrend && (
+          <View style={styles.vsCard}>
+            <View style={styles.vsLeft}>
+              <Text style={styles.vsEyebrow}>VS LAST MONTH</Text>
+              <View style={styles.vsAmountRow}>
+                <Text style={[styles.vsAmount, IS_WEB && { fontFamily: 'Geist' }]}>
+                  {trendDelta >= 0 ? '+' : '−'}${Math.abs(trendDelta).toFixed(0)}
+                </Text>
+                <View style={styles.vsPill}>
+                  <Ionicons name={trendUp ? 'trending-up' : 'trending-down'} size={11} color={C.teal} />
+                  <Text style={styles.vsPillText}>
+                    {trendUp ? '+' : '−'}{Math.abs(trend.percentageChange).toFixed(1)}%
+                  </Text>
+                </View>
               </View>
             </View>
-            <Text style={styles.vsDesc}>
-              Spending decreased compared to last period. Housing remains your largest expense category.
-            </Text>
           </View>
-          <View style={styles.vsBar}>
-            {[0.75, 1.0, 0.6, 0.85, 0.5, 0.7, 0.9].map((h, i) => (
-              <View key={i} style={[styles.vsBarSegment, { height: 36 * h, opacity: i === 3 ? 1 : 0.35 }]} />
-            ))}
-          </View>
-        </View>
-
-        {/* Next Forecasted Payment */}
-        <View style={styles.forecastCard}>
-          <View style={styles.forecastLeft}>
-            <View style={styles.forecastIcon}>
-              <Ionicons name="cloud-outline" size={18} color={C.teal} />
-            </View>
-            <View>
-              <Text style={styles.forecastLabel}>Next Forecasted Payment</Text>
-              <Text style={[styles.forecastName, IS_WEB && { fontFamily: 'Geist' }]}>Cloud Services</Text>
-            </View>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.forecastAmount, IS_WEB && { fontFamily: 'Geist' }]}>$899.00</Text>
-            <View style={styles.forecastDuePill}>
-              <View style={styles.dueDot} />
-              <Text style={styles.forecastDue}>Due in 2 days</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Behavioral Insight */}
-        <View style={styles.insightCard}>
-          <View style={styles.insightEyebrow}>
-            <Ionicons name="hardware-chip-outline" size={11} color={C.teal} />
-            <Text style={styles.insightEyebrowText}>CEREBRAL INTELLIGENCE</Text>
-          </View>
-          <Text style={[styles.insightTitle, IS_WEB && { fontFamily: 'Geist' }]}>Behavioral Insight</Text>
-          <Text style={styles.insightBody}>
-            Your dining spend is{' '}
-            <Text style={{ color: C.white, fontWeight: '700' }}>15% above</Text>
-            {' '}your 3-month average. Friday and Saturday evenings account for 68% of restaurant charges.
-          </Text>
-
-          {/* Action card */}
-          <View style={styles.actionCard}>
-            <View style={styles.actionTop}>
-              <View style={styles.actionDot} />
-              <Text style={styles.actionLabel}>Action Recommended</Text>
-            </View>
-            <Text style={styles.actionDesc}>
-              Setting a weekly dining budget of $120 could save you an estimated $85/month.
-            </Text>
-            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.85}>
-              <Ionicons name="add-circle-outline" size={16} color={C.bg} />
-              <Text style={[styles.actionBtnText, IS_WEB && { fontFamily: 'Geist' }]}>
-                Add to Monthly Budget Plan
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Expandable */}
-          <TouchableOpacity
-            style={styles.expandRow}
-            onPress={() => setPatternExpanded(v => !v)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.expandText}>See detailed behavioral patterns</Text>
-            <Ionicons
-              name={patternExpanded ? 'chevron-up' : 'chevron-down'}
-              size={14}
-              color={C.teal}
-            />
-          </TouchableOpacity>
-
-          {patternExpanded && (
-            <View style={styles.expandContent}>
-              {[
-                { day: 'Mon – Thu', avg: '$18', note: 'Mostly lunch takeout' },
-                { day: 'Fri – Sat', avg: '$74', note: 'Dinner + drinks, high variance' },
-                { day: 'Sunday',    avg: '$12', note: 'Grocery runs, low spend' },
-              ].map(r => (
-                <View key={r.day} style={styles.patternRow}>
-                  <Text style={styles.patternDay}>{r.day}</Text>
-                  <Text style={styles.patternAvg}>{r.avg} avg</Text>
-                  <Text style={styles.patternNote}>{r.note}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
+        )}
 
         {/* Recent Activity */}
         <View style={styles.activityHeader}>
@@ -322,9 +261,15 @@ export default function Spending({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.txList}>
-          {txns.map((tx, i) => <TxRow key={tx.id ?? i} tx={tx} />)}
-        </View>
+        {txns.length > 0 ? (
+          <View style={styles.txList}>
+            {txns.map((tx, i) => <TxRow key={tx.id ?? i} tx={tx} />)}
+          </View>
+        ) : (
+          <View style={styles.emptyTxBox}>
+            <Text style={styles.emptyTxText}>No transactions yet</Text>
+          </View>
+        )}
       </ScrollView>
       <ChatSheet visible={chatOpen} onClose={() => setChatOpen(false)} screenKey="spending" />
     </View>
@@ -409,9 +354,13 @@ const styles = StyleSheet.create({
     borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
   },
   vsPillText:    { fontSize: 11, fontWeight: '700', color: C.teal },
-  vsDesc:        { fontSize: 12, color: C.muted, lineHeight: 17 },
-  vsBar:         { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
-  vsBarSegment:  { width: 6, backgroundColor: C.teal, borderRadius: 3 },
+
+  // Empty state
+  emptyTxBox: {
+    backgroundColor: C.card, borderRadius: 18, padding: 20,
+    borderWidth: 1, borderColor: C.border, alignItems: 'center', marginBottom: 24,
+  },
+  emptyTxText: { fontSize: 13, color: C.muted },
 
   // Forecast card
   forecastCard: {

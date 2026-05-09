@@ -35,25 +35,6 @@ const INSIGHT_TONE = {
   opportunity: 'opt', savings_tip: 'opt',
 };
 
-// ─── Mock insights fallback ───────────────────────────────────────────────────
-const MOCK_INSIGHTS = [
-  {
-    id: '1', type: 'opportunity', age: '2h ago',
-    title: 'You saved $40 on subscriptions this month',
-    description: 'AI detected 2 unused services and successfully initiated the cancellation flow.',
-  },
-  {
-    id: '2', type: 'overspending', age: '6h ago',
-    title: 'Potential double charge detected',
-    description: "Duplicate $82.50 charge at 'Lumina Bistro' flagged. Tap to dispute.",
-  },
-  {
-    id: '3', type: 'idle_cash', age: 'Yesterday',
-    title: 'Auto-invest opportunity: $1,200 Surplus',
-    description: 'Analysis shows excess cash in your primary account. Recommended: Move to Index Fund.',
-  },
-];
-
 // ─── Insight Card ─────────────────────────────────────────────────────────────
 function InsightCard({ insight }) {
   const type = INSIGHT_TONE[insight.type] ?? 'opt';
@@ -96,8 +77,7 @@ function HealthMetric({ label, value, barColor, barPercent }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function IntelligenceHub({ navigation, route }) {
   const insets  = useSafeAreaInsets();
-  const insights = route.params?.insights ?? [];
-  const displayInsights = insights.length > 0 ? insights : MOCK_INSIGHTS;
+  const displayInsights = route.params?.insights ?? [];
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -131,27 +111,10 @@ export default function IntelligenceHub({ navigation, route }) {
 
           {/* Body */}
           <Text style={styles.pulseBody}>
-            Your portfolio is outperforming the benchmark by{' '}
-            <Text style={{ color: C.teal, fontWeight: '700' }}>1.2%</Text>
-            {' '}today. Food spending is up{' '}
-            <Text style={{ color: C.amber, fontWeight: '700' }}>12%</Text>
-            {' '}vs last month. You have{' '}
-            <Text style={{ color: '#7C3AED', fontWeight: '700' }}>$1,200</Text>
-            {' '}in idle cash that could be working harder. No urgent actions required.
+            {displayInsights.length > 0
+              ? `${displayInsights.length} new insight${displayInsights.length === 1 ? '' : 's'} ready for review.`
+              : 'Connect a bank account to start receiving personalized insights.'}
           </Text>
-
-          {/* Stat pills */}
-          <View style={styles.statPillRow}>
-            <View style={[styles.statPill, { backgroundColor: C.tealDim, borderColor: C.tealBorder }]}>
-              <Text style={[styles.statPillText, { color: C.teal }]}>↑ 1.2% Portfolio</Text>
-            </View>
-            <View style={[styles.statPill, { backgroundColor: C.amberDim, borderColor: C.amberBorder }]}>
-              <Text style={[styles.statPillText, { color: C.amber }]}>↑ 12% Food Spend</Text>
-            </View>
-            <View style={[styles.statPill, { backgroundColor: 'rgba(124,58,237,0.12)', borderColor: 'rgba(124,58,237,0.25)' }]}>
-              <Text style={[styles.statPillText, { color: '#7C3AED' }]}>$1.2k Idle Cash</Text>
-            </View>
-          </View>
         </View>
 
         {/* All Insights section */}
@@ -162,39 +125,19 @@ export default function IntelligenceHub({ navigation, route }) {
           </View>
         </View>
 
-        <View style={styles.insightsList}>
-          {displayInsights.map((ins, i) => (
-            <InsightCard key={ins.id ?? i} insight={ins} />
-          ))}
-        </View>
-
-        {/* Financial Health section */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, IS_WEB && { fontFamily: 'Geist' }]}>Financial Health</Text>
-        </View>
-
-        <View style={styles.healthCard}>
-          <HealthMetric
-            label="Savings Rate"
-            value="18% of income"
-            barColor={C.teal}
-            barPercent={18}
-          />
-          <View style={styles.healthDivider} />
-          <HealthMetric
-            label="Debt-to-Income"
-            value="0.24"
-            barColor="#22C55E"
-            barPercent={24}
-          />
-          <View style={styles.healthDivider} />
-          <HealthMetric
-            label="Emergency Fund"
-            value="2.3 months"
-            barColor={C.amber}
-            barPercent={46}
-          />
-        </View>
+        {displayInsights.length > 0 ? (
+          <View style={styles.insightsList}>
+            {displayInsights.map((ins, i) => (
+              <InsightCard key={ins.id ?? i} insight={ins} />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyInsightsBox}>
+            <Text style={styles.emptyInsightsText}>
+              No insights yet. Connect a bank to get started.
+            </Text>
+          </View>
+        )}
 
       </ScrollView>
     </View>
@@ -264,6 +207,12 @@ const styles = StyleSheet.create({
 
   // Insights
   insightsList: { gap: 10, marginBottom: 24 },
+  emptyInsightsBox: {
+    backgroundColor: C.card, borderRadius: 16, padding: 24,
+    borderWidth: 1, borderColor: C.border, alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyInsightsText: { fontSize: 13, color: C.muted, textAlign: 'center' },
   insightCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.card,

@@ -10,9 +10,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
-import {
-  MOCK_DASHBOARD, MOCK_INSIGHTS,
-} from '../data/mockData';
 
 const IS_WEB = Platform.OS === 'web';
 const { width: SW } = Dimensions.get('window');
@@ -22,13 +19,6 @@ function hexAlpha(hex, alpha) {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},${alpha})`;
-}
-
-// Derives N data points ending at `current` given a constant per-period growth rate.
-function buildSparkPoints(current, pctPerPeriod, count = 10) {
-  const rate = pctPerPeriod / 100;
-  const start = current / Math.pow(1 + rate, count - 1);
-  return Array.from({ length: count }, (_, i) => Math.round(start * Math.pow(1 + rate, i)));
 }
 
 const C = {
@@ -99,29 +89,41 @@ function InsightCard({ insight, onPress }) {
 }
 
 // ─── Net Worth Card ───────────────────────────────────────────────────────────
-function NetWorthCard({ netWorth = 0, change = 2.4, sparkData }) {
+function NetWorthCard({ netWorth = 0, change, sparkData }) {
   const fmt = (n) => {
     const [whole, dec] = Math.abs(n).toFixed(2).split('.');
     return { whole: '$' + parseInt(whole).toLocaleString(), dec };
   };
   const { whole, dec } = fmt(netWorth);
+  const showChange = typeof change === 'number';
+  const showSpark  = Array.isArray(sparkData) && sparkData.length > 1;
 
   return (
     <View style={styles.networthCard}>
       <View style={styles.networthTop}>
         <Text style={styles.networthLabel}>TOTAL NET WORTH</Text>
-        <View style={styles.changePill}>
-          <Ionicons name="trending-up" size={11} color={C.teal} />
-          <Text style={styles.changeText}>+{change}%</Text>
-        </View>
+        {showChange && (
+          <View style={styles.changePill}>
+            <Ionicons
+              name={change >= 0 ? 'trending-up' : 'trending-down'}
+              size={11}
+              color={C.teal}
+            />
+            <Text style={styles.changeText}>
+              {change >= 0 ? '+' : '−'}{Math.abs(change).toFixed(1)}%
+            </Text>
+          </View>
+        )}
       </View>
       <View style={styles.networthAmtRow}>
         <Text style={[styles.networthAmt, IS_WEB && { fontFamily: 'Geist' }]}>{whole}</Text>
         <Text style={[styles.networthDec, IS_WEB && { fontFamily: 'Geist' }]}>.{dec}</Text>
       </View>
-      <View style={{ marginTop: 16, marginHorizontal: -4 }}>
-        <Sparkline points={sparkData ?? buildSparkPoints(netWorth, change)} />
-      </View>
+      {showSpark && (
+        <View style={{ marginTop: 16, marginHorizontal: -4 }}>
+          <Sparkline points={sparkData} />
+        </View>
+      )}
     </View>
   );
 }
@@ -131,25 +133,30 @@ const METRIC_CARD_PAD = 14;
 const METRIC_SPARKLINE_W = METRIC_CARD_W - METRIC_CARD_PAD * 2;
 
 // ─── Metric Card ──────────────────────────────────────────────────────────────
-function MetricCard({ label, amount, change, positive, points = [], accent = C.teal }) {
+function MetricCard({ label, amount, change, positive, points, accent = C.teal }) {
+  const hasSpark = Array.isArray(points) && points.length > 1;
   return (
     <View style={styles.metricCard}>
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={[styles.metricAmount, IS_WEB && { fontFamily: 'Geist' }]}>{amount}</Text>
-      <View style={[styles.metricPill, {
-        backgroundColor: hexAlpha(accent, 0.10),
-        borderColor: hexAlpha(accent, 0.27),
-      }]}>
-        <Ionicons
-          name={positive ? 'trending-up' : 'trending-down'}
-          size={10}
-          color={accent}
-        />
-        <Text style={[styles.metricPillText, { color: accent }]}>{change}</Text>
-      </View>
-      <View style={{ marginTop: 10 }}>
-        <Sparkline points={points} color={accent} height={40} width={METRIC_SPARKLINE_W} />
-      </View>
+      {change ? (
+        <View style={[styles.metricPill, {
+          backgroundColor: hexAlpha(accent, 0.10),
+          borderColor: hexAlpha(accent, 0.27),
+        }]}>
+          <Ionicons
+            name={positive ? 'trending-up' : 'trending-down'}
+            size={10}
+            color={accent}
+          />
+          <Text style={[styles.metricPillText, { color: accent }]}>{change}</Text>
+        </View>
+      ) : null}
+      {hasSpark && (
+        <View style={{ marginTop: 10 }}>
+          <Sparkline points={points} color={accent} height={40} width={METRIC_SPARKLINE_W} />
+        </View>
+      )}
     </View>
   );
 }
@@ -167,14 +174,14 @@ export default function Snapshot({ navigation }) {
   const load = useCallback(async () => {
     try {
       const [dRes, iRes] = await Promise.all([
-        api.get('/users/dashboard'),
+        api.get('/accounts/dashboard'),
         api.get('/insights'),
       ]);
       setDashboard(dRes.data);
       setInsights(iRes.data?.slice(0, 3) ?? []);
     } catch {
-      setDashboard(MOCK_DASHBOARD);
-      setInsights(MOCK_INSIGHTS.slice(0, 3));
+      setDashboard(null);
+      setInsights([]);
     }
   }, []);
 
@@ -186,9 +193,23 @@ export default function Snapshot({ navigation }) {
     setRefreshing(false);
   }, [load]);
 
-  const netWorth = dashboard?.totalBalance ?? 1_248_392.42;
+  const netWorth = dashboard?.totalCashAvailable ?? 0;
 
-  const displayInsights = insights.length > 0 ? insights : MOCK_SNAPSHOT_INSIGHTS;
+  // Derive metric cards from accounts (savings + investment + spending trend)
+  const savingsTotal = (dashboard?.accounts ?? [])
+    .filter((a) => a.accountType === 'savings')
+    .reduce((s, a) => s + Number(a.balance ?? 0), 0);
+  const investmentTotal = (dashboard?.accounts ?? [])
+    .filter((a) => a.accountType === 'investment')
+    .reduce((s, a) => s + Number(a.balance ?? 0), 0);
+  const spendingThisMonth = dashboard?.spendingTrend?.currentMonth ?? 0;
+  const trendPct = dashboard?.spendingTrend?.percentageChange;
+  const trendDir = dashboard?.spendingTrend?.direction;
+  const showSpendingChange = typeof trendPct === 'number' && trendDir;
+
+  const fmtAmt = (n) => '$' + Number(n).toLocaleString('en-CA', { maximumFractionDigits: 0 });
+
+  const displayInsights = insights;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -215,39 +236,40 @@ export default function Snapshot({ navigation }) {
         <NetWorthCard netWorth={netWorth} />
 
         {/* Metric Cards Row */}
-        <View style={styles.metricRowWrapper}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingHorizontal: 16 }}
-            style={{ marginBottom: 16 }}
-          >
-            <MetricCard
-              label="Savings"
-              amount="$4,200"
-              change="+2.1%"
-              positive
-              accent={C.teal}
-              points={buildSparkPoints(4200, 2.1)}
-            />
-            <MetricCard
-              label="Investments"
-              amount="$12,840"
-              change="+5.4%"
-              positive
-              accent="#7C3AED"
-              points={buildSparkPoints(12840, 5.4)}
-            />
-            <MetricCard
-              label="Spending"
-              amount="$2,340"
-              change="+8.2%"
-              positive={false}
-              accent={C.amber}
-              points={buildSparkPoints(2340, 8.2)}
-            />
-          </ScrollView>
-        </View>
+        {(savingsTotal > 0 || investmentTotal > 0 || spendingThisMonth > 0) && (
+          <View style={styles.metricRowWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingHorizontal: 16 }}
+              style={{ marginBottom: 16 }}
+            >
+              {savingsTotal > 0 && (
+                <MetricCard
+                  label="Savings"
+                  amount={fmtAmt(savingsTotal)}
+                  accent={C.teal}
+                />
+              )}
+              {investmentTotal > 0 && (
+                <MetricCard
+                  label="Investments"
+                  amount={fmtAmt(investmentTotal)}
+                  accent="#7C3AED"
+                />
+              )}
+              {spendingThisMonth > 0 && (
+                <MetricCard
+                  label="Spending"
+                  amount={fmtAmt(spendingThisMonth)}
+                  change={showSpendingChange ? `${trendDir === 'up' ? '+' : '−'}${Math.abs(trendPct).toFixed(1)}%` : null}
+                  positive={trendDir === 'down'}
+                  accent={C.amber}
+                />
+              )}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Manage Assets */}
         <TouchableOpacity
@@ -269,9 +291,9 @@ export default function Snapshot({ navigation }) {
             </View>
             <Text style={[styles.pulseTitle, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral Insights</Text>
             <Text style={styles.pulseBody}>
-              Your portfolio is outperforming the benchmark by{' '}
-              <Text style={{ color: C.teal, fontWeight: '700' }}>1.2%</Text>
-              {' '}today. 3 new insights ready.
+              {displayInsights.length > 0
+                ? `${displayInsights.length} new insight${displayInsights.length === 1 ? '' : 's'} ready for review.`
+                : 'Connect a bank account to start receiving personalized insights.'}
             </Text>
           </View>
 
@@ -303,25 +325,6 @@ export default function Snapshot({ navigation }) {
     </View>
   );
 }
-
-// ─── Mock fallback data ───────────────────────────────────────────────────────
-const MOCK_SNAPSHOT_INSIGHTS = [
-  {
-    id: '1', type: 'opportunity', age: '2h ago',
-    title: 'You saved $40 on subscriptions this month',
-    description: 'AI detected 2 unused services and successfully initiated the cancellation flow.',
-  },
-  {
-    id: '2', type: 'overspending', age: '6h ago',
-    title: 'Potential double charge detected',
-    description: "Duplicate $82.50 charge at 'Lumina Bistro' flagged. Tap to dispute.",
-  },
-  {
-    id: '3', type: 'idle_cash', age: 'Yesterday',
-    title: 'Auto-invest opportunity: $1,200 Surplus',
-    description: 'Analysis shows excess cash in your primary account. Recommended: Move to Index Fund.',
-  },
-];
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({

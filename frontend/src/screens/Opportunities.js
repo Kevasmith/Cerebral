@@ -6,7 +6,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
-import { MOCK_OPPORTUNITIES } from '../data/mockData';
 
 const IS_WEB = Platform.OS === 'web';
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -205,9 +204,9 @@ export default function Opportunities() {
     try {
       const res  = await api.get('/opportunities');
       const data = res.data ?? [];
-      setOpportunities(data.length > 0 ? data : MOCK_OPPORTUNITIES);
+      setOpportunities(data);
     } catch {
-      setOpportunities(MOCK_OPPORTUNITIES);
+      setOpportunities([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
