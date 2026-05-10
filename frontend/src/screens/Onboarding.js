@@ -13,15 +13,17 @@ const IS_WEB = Platform.OS === 'web';
 const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
 const FLINKS_REDIRECT = 'https://cerebral.app/bank-connected';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const BG       = '#080E14';
-const CARD     = '#0D1821';
+// ─── Design tokens (cream-light theme) ────────────────────────────────────────
+const BG       = '#F4F2EC';
+const CARD     = '#FBF9F4';
 const TEAL     = '#10C896';
 const TEAL_DIM = 'rgba(16,200,150,0.10)';
-const TEAL_BDR = 'rgba(16,200,150,0.35)';
-const BORDER   = 'rgba(255,255,255,0.08)';
-const TEXT     = '#FFFFFF';
-const TEXT_DIM = 'rgba(255,255,255,0.50)';
+const TEAL_BDR = 'rgba(16,200,150,0.30)';
+const BORDER   = '#ECE8DC';
+const TEXT     = '#0F172A';
+const TEXT_DIM = 'rgba(15,23,42,0.55)';
+const PILL_BG  = '#0F172A'; // black pill for primary CTAs
+const PILL_FG  = '#FFFFFF'; // text/icon on black pill
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const GOALS = [
@@ -589,7 +591,7 @@ const s = StyleSheet.create({
   bottomRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
   // ── Connect Bank ──
-  bankHero:   { backgroundColor: '#0D1821', paddingHorizontal: 22, paddingBottom: 28 },
+  bankHero:   { backgroundColor: BG, paddingHorizontal: 22, paddingBottom: 28 },
   encryptBadge:{
     flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
     paddingHorizontal: 11, paddingVertical: 5,
@@ -651,7 +653,7 @@ const s = StyleSheet.create({
   stepProgressRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   stepProgressLabel:{ fontSize: 11, fontWeight: '700', color: TEAL, letterSpacing: 1.2, textTransform: 'uppercase' },
   progressBar:      { flexDirection: 'row', gap: 6 },
-  progressSeg:      { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.10)' },
+  progressSeg:      { flex: 1, height: 4, borderRadius: 2, backgroundColor: BORDER },
   progressSegFilled:{ backgroundColor: TEAL },
 
   // ── Goal card ──
@@ -662,12 +664,12 @@ const s = StyleSheet.create({
   goalRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingVertical: 14, paddingHorizontal: 14,
-    backgroundColor: '#111B2A', borderRadius: 14,
+    backgroundColor: BG, borderRadius: 14,
     borderWidth: 1.5, borderColor: BORDER,
     marginBottom: 10,
   },
-  goalRowActive:   { borderColor: TEAL, backgroundColor: 'rgba(16,200,150,0.05)' },
-  goalIcon:        { width: 38, height: 38, borderRadius: 10, backgroundColor: '#1A2535', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  goalRowActive:   { borderColor: TEAL, backgroundColor: 'rgba(16,200,150,0.06)' },
+  goalIcon:        { width: 38, height: 38, borderRadius: 10, backgroundColor: '#F0EEE6', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   goalIconActive:  { backgroundColor: TEAL },
   goalLabel:       { fontSize: 15, fontWeight: '700', color: TEXT, marginBottom: 2 },
   goalSub:         { fontSize: 12, color: TEXT_DIM },
@@ -680,7 +682,7 @@ const s = StyleSheet.create({
   },
   planNavBack:      { width: 40, height: 40, justifyContent: 'center' },
   planNavTitle:     { fontSize: 17, fontWeight: '700', color: TEXT },
-  planNavBadge:     { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  planNavBadge:     { backgroundColor: '#F0EEE6', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   planNavBadgeText: { fontSize: 10, fontWeight: '700', color: TEXT_DIM, letterSpacing: 1, textTransform: 'uppercase' },
 
   planContent:     { paddingHorizontal: 18 },
@@ -701,7 +703,8 @@ const s = StyleSheet.create({
 
   savingsRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#111B2A', borderRadius: 12, padding: 14, marginBottom: 8,
+    backgroundColor: BG, borderRadius: 12, padding: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: BORDER,
   },
   savingsBar:    { width: 3, height: 36, borderRadius: 2, backgroundColor: TEAL },
   savingsLabel:  { fontSize: 10, fontWeight: '700', color: TEXT_DIM, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 },
@@ -709,14 +712,14 @@ const s = StyleSheet.create({
 
   guardrailRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   guardrailCategory:{ fontSize: 14, color: TEXT },
-  guardrailPct:     { fontSize: 14, fontWeight: '700', color: '#F87171' },
-  guardrailTrack:   { flexDirection: 'row', height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.07)', overflow: 'hidden', marginBottom: 10 },
+  guardrailPct:     { fontSize: 14, fontWeight: '700', color: '#EF4444' },
+  guardrailTrack:   { flexDirection: 'row', height: 6, borderRadius: 3, backgroundColor: '#ECE9DF', overflow: 'hidden', marginBottom: 10 },
   guardrailFill:    { backgroundColor: TEAL, borderRadius: 3 },
   guardrailNote:    { fontSize: 12, color: TEXT_DIM, lineHeight: 17 },
 
   milestoneNumber: { fontSize: 52, fontWeight: '800', color: TEXT, letterSpacing: -2, marginTop: 4 },
   milestoneUnit:   { fontSize: 14, color: TEXT_DIM, marginBottom: 14 },
-  probabilityBadge:{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#0A2A1E', borderRadius: 30, paddingHorizontal: 14, paddingVertical: 8 },
+  probabilityBadge:{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: TEAL_DIM, borderWidth: 1, borderColor: TEAL_BDR, borderRadius: 30, paddingHorizontal: 14, paddingVertical: 8 },
   probabilityText: { fontSize: 11, fontWeight: '700', color: TEAL, letterSpacing: 1, textTransform: 'uppercase' },
 
   editCard: {
@@ -727,7 +730,7 @@ const s = StyleSheet.create({
   editCardText: { fontSize: 15, fontWeight: '600', color: TEXT },
 
   aiBanner: {
-    backgroundColor: '#071410', borderRadius: 18, overflow: 'hidden',
+    backgroundColor: TEAL_DIM, borderRadius: 18, overflow: 'hidden',
     borderWidth: 1, borderColor: TEAL_BDR, marginBottom: 10,
   },
   aiBannerInner: {
@@ -738,8 +741,9 @@ const s = StyleSheet.create({
 
   activateBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 18, paddingTop: 12, backgroundColor: BG },
   activateBtn: {
-    backgroundColor: TEAL, borderRadius: 50,
-    paddingVertical: 18, alignItems: 'center',
+    backgroundColor: PILL_BG, borderRadius: 999,
+    paddingVertical: 17, alignItems: 'center',
+    shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
-  activateBtnText: { fontSize: 17, fontWeight: '800', color: BG, letterSpacing: -0.3 },
+  activateBtnText: { fontSize: 16, fontWeight: '700', color: PILL_FG, letterSpacing: -0.2 },
 });

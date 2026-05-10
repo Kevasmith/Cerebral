@@ -8,26 +8,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useAuthStore from '../store/authStore';
 import useBillingStore from '../store/billingStore';
+import { C, SHADOW, SHADOW_SOFT } from '../constants/theme';
 
 const IS_WEB = Platform.OS === 'web';
-
-const C = {
-  bg:         '#080E14',
-  card:       '#0D1520',
-  teal:       '#10C896',
-  tealDim:    'rgba(16,200,150,0.12)',
-  tealBorder: 'rgba(16,200,150,0.25)',
-  white:      '#FFFFFF',
-  muted:      'rgba(255,255,255,0.55)',
-  faint:      'rgba(255,255,255,0.28)',
-  border:     'rgba(255,255,255,0.07)',
-  red:        '#EF6C55',
-  redDim:     'rgba(239,108,85,0.12)',
-  redBorder:  'rgba(239,108,85,0.3)',
-  gold:       '#F5C842',
-  goldDim:    'rgba(245,200,66,0.12)',
-  goldBorder: 'rgba(245,200,66,0.35)',
-};
 
 function memberSince(profile) {
   if (!profile?.createdAt) return null;
@@ -78,7 +61,7 @@ function EditNameModal({ visible, current, onSave, onClose }) {
             </TouchableOpacity>
             <TouchableOpacity style={styles.modalSaveBtn} onPress={save} disabled={saving}>
               {saving
-                ? <ActivityIndicator color={C.bg} size="small" />
+                ? <ActivityIndicator color={C.textInvert} size="small" />
                 : <Text style={[styles.modalSaveText, IS_WEB && { fontFamily: 'Geist' }]}>Save</Text>
               }
             </TouchableOpacity>
@@ -90,15 +73,15 @@ function EditNameModal({ visible, current, onSave, onClose }) {
 }
 
 // ─── Settings row ─────────────────────────────────────────────────────────────
-function SettingsRow({ icon, iconBg, label, sublabel, onPress, rightEl, danger, isLast }) {
+function SettingsRow({ icon, iconBg, iconColor, label, sublabel, onPress, rightEl, danger, isLast }) {
   return (
     <TouchableOpacity
       style={[styles.settingsRow, !isLast && styles.settingsRowBorder]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <View style={[styles.rowIcon, { backgroundColor: iconBg ?? 'rgba(255,255,255,0.07)' }]}>
-        <Ionicons name={icon} size={18} color={danger ? C.red : C.white} />
+      <View style={[styles.rowIcon, { backgroundColor: iconBg ?? C.cardAlt }]}>
+        <Ionicons name={icon} size={18} color={danger ? C.red : (iconColor ?? C.text)} />
       </View>
       <View style={styles.rowBody}>
         <Text style={[styles.rowLabel, danger && { color: C.red }, IS_WEB && { fontFamily: 'Geist' }]}>
@@ -168,7 +151,7 @@ export default function Settings({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation?.goBack?.()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={C.white} />
+            <Ionicons name="arrow-back" size={20} color={C.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, IS_WEB && { fontFamily: 'Geist' }]}>Account Settings</Text>
           <TouchableOpacity style={styles.helpBtn} activeOpacity={0.7}
@@ -192,7 +175,7 @@ export default function Settings({ navigation }) {
                 <Text style={[styles.avatarText, IS_WEB && { fontFamily: 'Geist' }]}>{initial}</Text>
               </View>
               <View style={styles.checkBadge}>
-                <Ionicons name="checkmark" size={9} color={C.bg} />
+                <Ionicons name="checkmark" size={9} color={C.textInvert} />
               </View>
             </View>
             <Text style={[styles.heroName, IS_WEB && { fontFamily: 'Geist' }]}>
@@ -204,7 +187,7 @@ export default function Settings({ navigation }) {
             <TouchableOpacity
               style={styles.editProfileBtn}
               onPress={() => setEditNameVisible(true)}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <Text style={[styles.editProfileText, IS_WEB && { fontFamily: 'Geist' }]}>Edit Profile</Text>
             </TouchableOpacity>
@@ -216,13 +199,13 @@ export default function Settings({ navigation }) {
             <View style={styles.planLeft}>
               <View style={[
                 styles.planBadge,
-                plan === 'pro'    && { backgroundColor: C.goldDim,  borderColor: C.goldBorder },
-                plan === 'growth' && { backgroundColor: C.tealDim,  borderColor: C.tealBorder },
-                plan === 'free'   && { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: C.border },
+                plan === 'pro'    && { backgroundColor: C.amberDim },
+                plan === 'growth' && { backgroundColor: C.tealDim },
+                plan === 'free'   && { backgroundColor: C.cardAlt },
               ]}>
                 <Text style={[
                   styles.planBadgeText,
-                  plan === 'pro'    && { color: C.gold },
+                  plan === 'pro'    && { color: C.amber },
                   plan === 'growth' && { color: C.teal },
                   plan === 'free'   && { color: C.muted },
                 ]}>
@@ -243,7 +226,7 @@ export default function Settings({ navigation }) {
               <TouchableOpacity
                 style={styles.upgradeBtn}
                 onPress={() => navigation?.navigate?.('Upgrade')}
-                activeOpacity={0.82}
+                activeOpacity={0.85}
               >
                 <Text style={styles.upgradeBtnText}>Upgrade</Text>
               </TouchableOpacity>
@@ -251,7 +234,7 @@ export default function Settings({ navigation }) {
               <TouchableOpacity
                 style={styles.manageBtn}
                 onPress={() => navigation?.navigate?.('Upgrade')}
-                activeOpacity={0.82}
+                activeOpacity={0.85}
               >
                 <Text style={styles.manageBtnText}>Manage</Text>
               </TouchableOpacity>
@@ -264,14 +247,16 @@ export default function Settings({ navigation }) {
           <View style={styles.settingsCard}>
             <SettingsRow
               icon="shield-checkmark-outline"
-              iconBg="rgba(255,255,255,0.07)"
+              iconBg={C.tealDim}
+              iconColor={C.teal}
               label="Security & Privacy"
               sublabel="Biometrics, 2FA, Session Management"
               onPress={() => Alert.alert('Security & Privacy', 'Coming soon.')}
             />
             <SettingsRow
               icon="notifications-outline"
-              iconBg="rgba(255,255,255,0.07)"
+              iconBg={C.violetDim}
+              iconColor={C.violet}
               label="Smart Notifications"
               sublabel="Transaction alerts, AI market insights"
               rightEl={
@@ -282,26 +267,26 @@ export default function Settings({ navigation }) {
                       <Switch
                         value={notifOn}
                         onValueChange={handleNotifToggle}
-                        trackColor={{ true: C.teal, false: 'rgba(255,255,255,0.15)' }}
+                        trackColor={{ true: C.teal, false: C.track }}
                         thumbColor={C.white}
-                        ios_backgroundColor="rgba(255,255,255,0.15)"
+                        ios_backgroundColor={C.track}
                       />
                     )
                   }
-                  <Ionicons name="chevron-forward" size={16} color={C.faint} />
                 </View>
               }
             />
             <SettingsRow
               icon="lock-closed-outline"
-              iconBg="rgba(255,255,255,0.07)"
+              iconBg={C.cardAlt}
               label="Data Privacy & Sharing"
               sublabel="Manage how your data trains Cerebral AI"
               onPress={() => Linking.openURL('https://cerebral.app/privacy')}
             />
             <SettingsRow
               icon="headset-outline"
-              iconBg="rgba(255,255,255,0.07)"
+              iconBg={C.amberDim}
+              iconColor={C.amber}
               label="Elite Concierge Support"
               sublabel="24/7 Priority access to human advisors"
               onPress={() => Linking.openURL('mailto:support@cerebral.app')}
@@ -317,7 +302,7 @@ export default function Settings({ navigation }) {
             />
           </View>
 
-          {/* ── Secure logout ─────────────────────────────────────────────── */}
+          {/* ── Secure logout — black pill ─────────────────────────────── */}
           <TouchableOpacity
             style={styles.logoutBtn}
             onPress={handleSignOut}
@@ -325,10 +310,10 @@ export default function Settings({ navigation }) {
             activeOpacity={0.85}
           >
             {signingOut ? (
-              <ActivityIndicator color={C.teal} />
+              <ActivityIndicator color={C.textInvert} />
             ) : (
               <>
-                <Ionicons name="log-out-outline" size={18} color={C.teal} style={{ marginRight: 10 }} />
+                <Ionicons name="log-out-outline" size={18} color={C.textInvert} style={{ marginRight: 10 }} />
                 <Text style={[styles.logoutText, IS_WEB && { fontFamily: 'Geist' }]}>Secure Logout</Text>
               </>
             )}
@@ -361,20 +346,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: C.border,
+    backgroundColor: C.bg,
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: C.cardAlt,
     alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 17, fontWeight: '700', color: C.white,
-  },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: C.text, letterSpacing: -0.2 },
   helpBtn: { padding: 2 },
   helpCircle: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1, borderColor: C.border,
+    backgroundColor: C.cardAlt,
     alignItems: 'center', justifyContent: 'center',
   },
   helpText: { fontSize: 15, fontWeight: '700', color: C.muted },
@@ -382,9 +365,10 @@ const styles = StyleSheet.create({
   // Hero card
   heroCard: {
     backgroundColor: C.card,
-    borderRadius: 24, borderWidth: 1, borderColor: C.border,
+    borderRadius: 24,
     alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20,
-    marginTop: 20, marginBottom: 28,
+    marginTop: 18, marginBottom: 24,
+    ...SHADOW,
   },
   avatarRing: {
     width: 88, height: 88, borderRadius: 44,
@@ -394,7 +378,7 @@ const styles = StyleSheet.create({
   },
   avatarInner: {
     width: 76, height: 76, borderRadius: 38,
-    backgroundColor: '#162030',
+    backgroundColor: C.surfaceDeep,
     alignItems: 'center', justifyContent: 'center',
   },
   avatarText: { fontSize: 32, fontWeight: '900', color: C.teal },
@@ -405,53 +389,53 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: C.card,
     alignItems: 'center', justifyContent: 'center',
   },
-  heroName:  { fontSize: 24, fontWeight: '900', color: C.white, marginBottom: 6, letterSpacing: -0.3 },
+  heroName:  { fontSize: 24, fontWeight: '900', color: C.text, marginBottom: 6, letterSpacing: -0.3 },
   heroSince: { fontSize: 13, color: C.muted, marginBottom: 20 },
   editProfileBtn: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: C.surfaceDeep,
     borderRadius: 999, paddingVertical: 12, paddingHorizontal: 36,
-    borderWidth: 1, borderColor: C.border,
+    ...SHADOW_SOFT,
   },
-  editProfileText: { fontSize: 15, fontWeight: '700', color: C.white },
+  editProfileText: { fontSize: 15, fontWeight: '700', color: C.textInvert, letterSpacing: -0.2 },
 
   // Section label
   sectionLabel: {
-    fontSize: 18, fontWeight: '800', color: C.white,
-    marginBottom: 14,
+    fontSize: 18, fontWeight: '800', color: C.text,
+    marginBottom: 12, letterSpacing: -0.3,
   },
 
   // Plan card
   planCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border,
+    backgroundColor: C.card, borderRadius: 16,
     paddingHorizontal: 16, paddingVertical: 14,
     marginBottom: 24,
+    ...SHADOW_SOFT,
   },
-  planLeft:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  planLeft:     { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   planBadge: {
-    borderRadius: 8, borderWidth: 1,
+    borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 5,
   },
   planBadgeText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.4 },
-  planName:      { fontSize: 14, fontWeight: '800', color: C.white },
+  planName:      { fontSize: 14, fontWeight: '800', color: C.text },
   planSub:       { fontSize: 12, color: C.muted, marginTop: 2 },
   upgradeBtn: {
-    backgroundColor: C.teal, borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: C.surfaceDeep, borderRadius: 999,
+    paddingHorizontal: 16, paddingVertical: 9,
   },
-  upgradeBtnText: { fontSize: 13, fontWeight: '800', color: '#080E14' },
+  upgradeBtnText: { fontSize: 13, fontWeight: '800', color: C.textInvert, letterSpacing: -0.2 },
   manageBtn: {
-    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10,
-    borderWidth: 1, borderColor: C.border,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: C.cardAlt, borderRadius: 999,
+    paddingHorizontal: 16, paddingVertical: 9,
   },
-  manageBtnText: { fontSize: 13, fontWeight: '700', color: C.muted },
+  manageBtnText: { fontSize: 13, fontWeight: '700', color: C.text },
 
   // Settings card
   settingsCard: {
     backgroundColor: C.card, borderRadius: 20,
-    borderWidth: 1, borderColor: C.border,
     overflow: 'hidden', marginBottom: 24,
+    ...SHADOW,
   },
   settingsRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -465,19 +449,19 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   rowBody: { flex: 1 },
-  rowLabel: { fontSize: 15, fontWeight: '700', color: C.white, marginBottom: 2 },
+  rowLabel: { fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 2 },
   rowSub:   { fontSize: 12, color: C.muted, lineHeight: 17 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
-  // Logout
+  // Logout — black pill
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 999, paddingVertical: 17,
-    borderWidth: 1.5, borderColor: C.tealBorder,
+    backgroundColor: C.surfaceDeep,
+    borderRadius: 999, paddingVertical: 16,
     marginBottom: 28,
+    ...SHADOW,
   },
-  logoutText: { fontSize: 16, fontWeight: '800', color: C.teal },
+  logoutText: { fontSize: 16, fontWeight: '700', color: C.textInvert, letterSpacing: -0.2 },
 
   // Footer
   footer: {
@@ -487,27 +471,26 @@ const styles = StyleSheet.create({
 
   // Modal
   overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.45)',
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24,
   },
   modalCard: {
     backgroundColor: C.card, borderRadius: 24, padding: 24,
     width: '100%', maxWidth: 380,
-    borderWidth: 1, borderColor: C.border,
+    ...SHADOW,
   },
-  modalTitle: { fontSize: 17, fontWeight: '800', color: C.white, marginBottom: 16 },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: C.text, marginBottom: 16, letterSpacing: -0.2 },
   modalInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12,
+    backgroundColor: C.input, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 13,
-    fontSize: 15, color: C.white, marginBottom: 20,
-    borderWidth: 1, borderColor: C.border,
+    fontSize: 15, color: C.text, marginBottom: 20,
   },
   modalBtns:       { flexDirection: 'row', gap: 10 },
   modalCancelBtn:  {
     flex: 1, padding: 14, borderRadius: 12,
-    borderWidth: 1, borderColor: C.border, alignItems: 'center',
+    backgroundColor: C.cardAlt, alignItems: 'center',
   },
-  modalCancelText: { fontSize: 15, color: C.muted, fontWeight: '600' },
-  modalSaveBtn:    { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.teal, alignItems: 'center' },
-  modalSaveText:   { fontSize: 15, color: C.bg, fontWeight: '800' },
+  modalCancelText: { fontSize: 15, color: C.text, fontWeight: '600' },
+  modalSaveBtn:    { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.surfaceDeep, alignItems: 'center' },
+  modalSaveText:   { fontSize: 15, color: C.textInvert, fontWeight: '800', letterSpacing: -0.2 },
 });

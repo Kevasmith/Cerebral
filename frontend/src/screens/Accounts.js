@@ -9,7 +9,7 @@ import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
 import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
-import { C } from '../constants/theme';
+import { C, SHADOW, SHADOW_SOFT } from '../constants/theme';
 import { BANKS } from '../constants/banks';
 import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPE_ICON } from '../constants/account-types';
 import { fmtBalance, timeSince, bankColor, bankInitial } from '../utils/format';
@@ -286,7 +286,7 @@ export default function Accounts({ navigation }) {
           activeOpacity={0.85}
           disabled={linkLoading}
         >
-          <Ionicons name="add-circle-outline" size={18} color={C.bg} style={{ marginRight: 8 }} />
+          <Ionicons name="add-circle-outline" size={18} color={C.textInvert} style={{ marginRight: 8 }} />
           <Text style={[styles.findOtherText, IS_WEB && { fontFamily: 'Geist' }]}>
             Find Other Institution
           </Text>
@@ -335,21 +335,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: C.border,
+    backgroundColor: C.bg,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerBrand: { fontSize: 16, fontWeight: '800', color: C.white, lineHeight: 19 },
-  headerSub:   { fontSize: 10, fontWeight: '600', color: C.teal, letterSpacing: 1.2, lineHeight: 14 },
+  headerBrand: { fontSize: 16, fontWeight: '800', color: C.text, lineHeight: 19 },
+  headerSub:   { fontSize: 10, fontWeight: '600', color: C.green, letterSpacing: 1.2, lineHeight: 14 },
   bellBtn: { padding: 2 },
   bellWrap: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: C.tealDim,
-    borderWidth: 1, borderColor: C.tealBorder,
+    backgroundColor: C.cardAlt,
+    borderWidth: 1, borderColor: C.border,
     alignItems: 'center', justifyContent: 'center',
   },
 
   // Page heading
   pageTitle: {
-    fontSize: 30, fontWeight: '900', color: C.white,
+    fontSize: 30, fontWeight: '900', color: C.text,
     letterSpacing: -0.5, lineHeight: 36, marginTop: 24, marginBottom: 8,
   },
   pageSubtitle: { fontSize: 13, color: C.muted, lineHeight: 20, marginBottom: 20 },
@@ -357,17 +358,17 @@ const styles = StyleSheet.create({
   // Search
   searchRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: C.input, borderWidth: 1, borderColor: C.border,
+    backgroundColor: C.input,
     borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
     marginBottom: 28,
   },
-  searchInput: { flex: 1, fontSize: 14, color: C.white },
+  searchInput: { flex: 1, fontSize: 14, color: C.text },
 
   // Section headers
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: C.white },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: C.text },
   countBadge: {
     backgroundColor: C.tealDim, borderRadius: 999,
     paddingHorizontal: 9, paddingVertical: 2,
@@ -378,8 +379,8 @@ const styles = StyleSheet.create({
   // Accounts card
   card: {
     backgroundColor: C.card, borderRadius: 20,
-    borderWidth: 1, borderColor: C.border,
     overflow: 'hidden',
+    ...SHADOW_SOFT,
   },
 
   // Account row
@@ -395,11 +396,11 @@ const styles = StyleSheet.create({
   },
   accountLogoText: { color: '#fff', fontSize: 12, fontWeight: '900', letterSpacing: 0.3 },
   accountMeta: { flex: 1 },
-  accountName: { fontSize: 14, fontWeight: '700', color: C.white, marginBottom: 4 },
+  accountName: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 4 },
   accountSubRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   accountSub: { fontSize: 12, color: C.muted },
   accountRight: { alignItems: 'flex-end', gap: 5 },
-  accountBalance: { fontSize: 14, fontWeight: '800', color: C.white },
+  accountBalance: { fontSize: 14, fontWeight: '800', color: C.text },
   syncBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: C.greenDim, borderRadius: 999,
@@ -416,7 +417,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.tealDim, borderWidth: 1, borderColor: C.tealBorder,
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.white, marginBottom: 6 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 6 },
   emptyText:  { fontSize: 13, color: C.muted, textAlign: 'center', lineHeight: 19 },
 
   // Bank grid
@@ -427,36 +428,37 @@ const styles = StyleSheet.create({
     width: '47%',
     backgroundColor: C.card, borderRadius: 16, padding: 16,
     alignItems: 'center', gap: 10,
-    borderWidth: 1, borderColor: C.border,
+    ...SHADOW_SOFT,
   },
   bankMark: {
     width: 48, height: 48, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
   },
   bankMarkText: { fontSize: 13, fontWeight: '900', letterSpacing: 0.3 },
-  bankLabel: { fontSize: 13, fontWeight: '600', color: C.white, textAlign: 'center' },
+  bankLabel: { fontSize: 13, fontWeight: '600', color: C.text, textAlign: 'center' },
 
-  // Find other button
+  // Find other button — black pill
   findOtherBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: C.teal, borderRadius: 999,
+    backgroundColor: C.surfaceDeep, borderRadius: 999,
     paddingVertical: 15, paddingHorizontal: 28,
     marginBottom: 28,
+    ...SHADOW,
   },
-  findOtherText: { fontSize: 15, fontWeight: '800', color: C.bg, letterSpacing: 0.3 },
+  findOtherText: { fontSize: 15, fontWeight: '700', color: C.textInvert, letterSpacing: 0.3 },
 
   // Security card
   securityCard: {
     flexDirection: 'row', gap: 14,
     backgroundColor: C.card, borderRadius: 20, padding: 18,
-    borderWidth: 1, borderColor: C.border,
+    ...SHADOW_SOFT,
   },
   securityIconWrap: {
     width: 48, height: 48, borderRadius: 14,
     backgroundColor: C.tealDim, borderWidth: 1, borderColor: C.tealBorder,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  securityTitle: { fontSize: 15, fontWeight: '800', color: C.white, marginBottom: 6 },
+  securityTitle: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 6 },
   securityBody:  { fontSize: 12, color: C.muted, lineHeight: 18, marginBottom: 12 },
   securityBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   securityBadge: {
