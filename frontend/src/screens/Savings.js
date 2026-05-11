@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   RefreshControl, Platform, Dimensions,
@@ -7,29 +7,15 @@ import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../api/client';
+import { C, SHADOW, SHADOW_SOFT } from '../constants/theme';
 
 const IS_WEB = Platform.OS === 'web';
 const { width: SW } = Dimensions.get('window');
 
-const C = {
-  bg:          '#080E14',
-  card:        '#0D1520',
-  cardDeep:    '#0A1018',
-  teal:        '#10C896',
-  tealDim:     'rgba(16,200,150,0.12)',
-  tealBorder:  'rgba(16,200,150,0.22)',
-  amber:       '#F59E0B',
-  white:       '#FFFFFF',
-  muted:       'rgba(255,255,255,0.55)',
-  faint:       'rgba(255,255,255,0.28)',
-  border:      'rgba(255,255,255,0.07)',
-};
-
 // ─── Progress bar ─────────────────────────────────────────────────────────────
-function ProgressBar({ pct, color = C.teal, height = 6 }) {
+function ProgressBar({ pct, color = C.green, height = 6 }) {
   return (
-    <View style={{ height, borderRadius: height / 2, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+    <View style={{ height, borderRadius: height / 2, backgroundColor: C.track, overflow: 'hidden' }}>
       <View style={{ width: `${Math.min(pct, 100)}%`, height, borderRadius: height / 2, backgroundColor: color }} />
     </View>
   );
@@ -42,48 +28,41 @@ function PrimaryCard() {
       <View style={styles.aiBadgeRow}>
         <View style={styles.aiDot} />
         <Text style={[styles.aiBadgeText, IS_WEB && { fontFamily: 'Geist' }]}>AI ANALYSIS</Text>
-        <View style={styles.sparkleIcon}>
-          <Ionicons name="sparkles" size={12} color={C.teal} />
-        </View>
+        <Ionicons name="sparkles" size={13} color={C.green} />
       </View>
       <Text style={[styles.primaryTitle, IS_WEB && { fontFamily: 'Geist' }]}>
         Move $200 to your high-yield savings
       </Text>
       <Text style={styles.primaryBody}>
-        Your checking account balance is 15% above your 3-month average. Moving this surplus to your Alpha Savings account will earn an additional 4.5% APY.
+        Your checking account balance is 15% above your 3-month average. Moving this surplus to your
+        Alpha Savings account will earn an additional 4.5% APY.
       </Text>
-      <View style={styles.primaryActions}>
-        <View style={styles.iconBtnRow}>
-          <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
-            <Ionicons name="business-outline" size={16} color={C.faint} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
-            <Ionicons name="trending-up-outline" size={16} color={C.faint} />
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity style={styles.executeBtn} activeOpacity={0.85}>
-          <Text style={[styles.executeBtnText, IS_WEB && { fontFamily: 'Geist' }]}>Execute Transfer</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.executeBtn} activeOpacity={0.85}>
+        <Text style={[styles.executeBtnText, IS_WEB && { fontFamily: 'Geist' }]}>Execute Transfer</Text>
+        <Ionicons name="arrow-forward" size={15} color={C.textInvert} />
+      </TouchableOpacity>
     </View>
   );
 }
 
 // ─── Opportunity mini-card ────────────────────────────────────────────────────
-function OppCard({ icon, title, body, savingLabel, linkText }) {
+function OppCard({ icon, accent, title, body, savingLabel, linkText }) {
+  const dim = accent === C.violet ? C.violetDim : accent === C.amber ? C.amberDim : C.greenDim;
   return (
     <View style={styles.oppCard}>
-      <View style={styles.oppIcon}>
-        <Ionicons name={icon} size={18} color={C.teal} />
+      <View style={[styles.oppIcon, { backgroundColor: dim }]}>
+        <Ionicons name={icon} size={18} color={accent} />
       </View>
       <Text style={[styles.oppTitle, IS_WEB && { fontFamily: 'Geist' }]}>{title}</Text>
       <Text style={styles.oppBody}>{body}</Text>
-      <View style={styles.savingBadge}>
-        <Text style={styles.savingBadgeText}>{savingLabel}</Text>
+      <View style={styles.oppFooter}>
+        <View style={[styles.savingBadge, { backgroundColor: dim }]}>
+          <Text style={[styles.savingBadgeText, { color: accent }]}>{savingLabel}</Text>
+        </View>
+        <TouchableOpacity activeOpacity={0.7}>
+          <Text style={[styles.oppLink, { color: accent }]}>{linkText} →</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity activeOpacity={0.7}>
-        <Text style={styles.oppLink}>{linkText} →</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -92,19 +71,16 @@ function OppCard({ icon, title, body, savingLabel, linkText }) {
 function TravelGoalCard() {
   return (
     <View style={styles.travelCard}>
-      {/* Map placeholder — gradient approximates the teal/earth map */}
       <View style={[
         styles.mapArea,
-        IS_WEB && {
-          backgroundImage: 'linear-gradient(145deg, #0a2a35 0%, #0d3d4a 40%, #0a9165 70%, #085c3a 100%)',
-        },
-        !IS_WEB && { backgroundColor: '#0a2a35' },
+        IS_WEB
+          ? { backgroundImage: 'linear-gradient(145deg, #F59E0B 0%, #EF4444 50%, #7C3AED 100%)' }
+          : { backgroundColor: '#F59E0B' },
       ]}>
-        <View style={styles.mapOverlay}>
-          {/* Simplified continent silhouette using views */}
-          <View style={styles.continentBlob} />
+        <View style={styles.travelBadge}>
+          <Text style={styles.travelBadgeText}>Travel Goal</Text>
         </View>
-        <Text style={styles.mapLabel}>Europe 2024</Text>
+        <Text style={[styles.mapLabel, IS_WEB && { fontFamily: 'Geist' }]}>Europe 2024 ✈︎</Text>
       </View>
       <View style={styles.travelInfo}>
         <View style={styles.travelTitleRow}>
@@ -113,8 +89,8 @@ function TravelGoalCard() {
         </View>
         <ProgressBar pct={65} />
         <View style={styles.travelAmtRow}>
-          <Text style={styles.travelSaved}>$6,500.00 saved</Text>
-          <Text style={styles.travelGoal}>$10,000.00 goal</Text>
+          <Text style={styles.travelSaved}>$6,500 saved</Text>
+          <Text style={styles.travelGoal}>$10,000 goal</Text>
         </View>
       </View>
     </View>
@@ -122,18 +98,19 @@ function TravelGoalCard() {
 }
 
 // ─── Savings goal row ─────────────────────────────────────────────────────────
-function GoalRow({ icon, title, current, target, caption, color = C.teal }) {
+function GoalRow({ icon, title, current, target, caption, color }) {
   const pct = Math.round((current / target) * 100);
+  const dim = color === C.violet ? C.violetDim : color === C.amber ? C.amberDim : C.greenDim;
   return (
     <View style={styles.goalRow}>
-      <View style={[styles.goalIcon, { backgroundColor: `${color}18` }]}>
+      <View style={[styles.goalIcon, { backgroundColor: dim }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
       <View style={{ flex: 1, gap: 6 }}>
         <View style={styles.goalTitleRow}>
           <Text style={[styles.goalTitle, IS_WEB && { fontFamily: 'Geist' }]}>{title}</Text>
           <Text style={styles.goalAmt}>
-            <Text style={{ color: C.white, fontWeight: '700' }}>${current.toLocaleString()}</Text>
+            <Text style={{ color: C.text, fontWeight: '700' }}>${current.toLocaleString()}</Text>
             {' / '}${target.toLocaleString()}
           </Text>
         </View>
@@ -165,7 +142,7 @@ export default function Savings({ navigation }) {
           <Text style={[styles.brand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
-          <Ionicons name="notifications-outline" size={22} color={C.teal} />
+          <Ionicons name="notifications-outline" size={22} color={C.text} />
         </TouchableOpacity>
       </View>
 
@@ -173,15 +150,17 @@ export default function Savings({ navigation }) {
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green} />}
       >
         {/* Hero */}
-        <Text style={[styles.pageTitle, IS_WEB && { fontFamily: 'Geist' }]}>Opportunities</Text>
+        <Text style={[styles.eyebrow, IS_WEB && { fontFamily: 'Geist' }]}>Opportunities</Text>
+        <Text style={[styles.pageTitle, IS_WEB && { fontFamily: 'Geist' }]}>3 strategic moves</Text>
         <Text style={styles.pageSub}>
-          Cerebral AI has identified 3 strategic moves to optimize your capital efficiency this month.
+          Cerebral AI found ways to optimize your capital this month.
         </Text>
         <View style={styles.potentialPill}>
-          <Text style={[styles.potentialText, IS_WEB && { fontFamily: 'Geist' }]}>+$425.00  Monthly Potential</Text>
+          <Text style={[styles.potentialAmt, IS_WEB && { fontFamily: 'Geist' }]}>+$425.00</Text>
+          <Text style={styles.potentialLabel}>Monthly potential</Text>
         </View>
 
         {/* Primary AI card */}
@@ -190,24 +169,27 @@ export default function Savings({ navigation }) {
         {/* Opportunity mini-cards */}
         <OppCard
           icon="flash-outline"
+          accent={C.green}
           title="Utility Provider Swap"
           body="Cerebral found a greener provider with a lower fixed rate for your postcode."
           savingLabel="Save $15/mo"
-          linkText="View Comparison"
+          linkText="View comparison"
         />
         <OppCard
           icon="albums-outline"
+          accent={C.violet}
           title="Subscription Audit"
           body="Two streaming services show zero usage over the last 60 days."
           savingLabel="Save $24.99/mo"
-          linkText="Manage Subscriptions"
+          linkText="Manage"
         />
         <OppCard
           icon="document-text-outline"
+          accent={C.amber}
           title="Tax Harvest"
           body="Opportunity detected in your tech portfolio to offset capital gains."
-          savingLabel="Tax-Loss Benefit"
-          linkText="Review Portfolio"
+          savingLabel="Tax-loss benefit"
+          linkText="Review"
         />
 
         {/* Travel goal */}
@@ -223,7 +205,7 @@ export default function Savings({ navigation }) {
             current={12400}
             target={15000}
             caption="Target reached in 4 months at current rate."
-            color={C.teal}
+            color={C.green}
           />
           <View style={styles.goalDivider} />
           <GoalRow
@@ -232,23 +214,28 @@ export default function Savings({ navigation }) {
             current={3200}
             target={8000}
             caption="Boost this goal with AI-recommended moves."
-            color="#7C3AED"
+            color={C.violet}
           />
         </View>
 
         {/* AI Reasoning */}
         <View style={styles.reasoningCard}>
           <View style={styles.reasoningHeader}>
-            <Ionicons name="bulb-outline" size={15} color={C.teal} />
+            <Ionicons name="bulb-outline" size={16} color={C.violet} />
             <Text style={[styles.reasoningTitle, IS_WEB && { fontFamily: 'Geist' }]}>Why these moves?</Text>
           </View>
-          <Text style={styles.reasoningQuote}>
-            {'"Our liquidity forecasting algorithm predicts a 12% drop in your expected expenditures next month based on historical travel patterns and the expiration of two subscriptions."'}
-          </Text>
-          <Text style={[styles.reasoningQuote, { marginTop: 10 }]}>
-            {'"Interest rates for Alpha Savings have risen by 0.25bps since Monday, while your current checking provider has held rates flat."'}
-          </Text>
-          <TouchableOpacity style={styles.downloadBtn} activeOpacity={0.8}>
+          <View style={[styles.reasoningQuote, { borderLeftColor: C.violetBorder }]}>
+            <Text style={styles.reasoningQuoteText}>
+              {'"Liquidity forecasting predicts a 12% drop in expected expenditures next month based on historical travel patterns and the expiration of two subscriptions."'}
+            </Text>
+          </View>
+          <View style={[styles.reasoningQuote, { borderLeftColor: C.greenBorder, marginTop: 10 }]}>
+            <Text style={styles.reasoningQuoteText}>
+              {'"Alpha Savings rates rose 0.25bps Monday; your current checking provider has held flat."'}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.downloadBtn} activeOpacity={0.85}>
+            <Ionicons name="download-outline" size={15} color={C.textInvert} />
             <Text style={[styles.downloadBtnText, IS_WEB && { fontFamily: 'Geist' }]}>Download Strategic Report</Text>
           </TouchableOpacity>
         </View>
@@ -269,108 +256,100 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: C.border,
+    backgroundColor: C.bg,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brand:   { fontSize: 17, fontWeight: '700', color: C.white },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brand:   { fontSize: 17, fontWeight: '800', color: C.text },
   bellBtn: { padding: 4 },
 
   // Hero
-  pageTitle: { fontSize: 34, fontWeight: '900', color: C.white, letterSpacing: -0.8, marginTop: 20, marginBottom: 8 },
-  pageSub:   { fontSize: 14, color: C.muted, lineHeight: 21, marginBottom: 14 },
+  eyebrow:   { fontSize: 11, fontWeight: '800', color: C.green, letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 18, marginBottom: 6 },
+  pageTitle: { fontSize: 30, fontWeight: '900', color: C.text, letterSpacing: -0.8, marginBottom: 8 },
+  pageSub:   { fontSize: 14, color: C.soft, lineHeight: 21, marginBottom: 14 },
   potentialPill: {
     alignSelf: 'flex-start',
-    borderWidth: 1, borderColor: C.tealBorder,
-    borderRadius: 999, paddingVertical: 7, paddingHorizontal: 16,
-    backgroundColor: C.tealDim, marginBottom: 20,
+    flexDirection: 'row', alignItems: 'baseline', gap: 8,
+    borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14,
+    backgroundColor: C.greenDim, marginBottom: 20,
   },
-  potentialText: { fontSize: 13, fontWeight: '700', color: C.teal },
+  potentialAmt:   { fontSize: 15, fontWeight: '800', color: C.green, letterSpacing: -0.2 },
+  potentialLabel: { fontSize: 12, color: C.green, fontWeight: '600' },
 
   // Primary card
   primaryCard: {
     backgroundColor: C.card,
-    borderRadius: 20, padding: 18,
-    borderWidth: 1, borderColor: C.tealBorder,
+    borderRadius: 22, padding: 20,
     marginBottom: 14,
+    ...SHADOW,
   },
   aiBadgeRow:    { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
-  aiDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: C.teal },
-  aiBadgeText:   { fontSize: 11, fontWeight: '800', color: C.teal, letterSpacing: 1.2, flex: 1 },
-  sparkleIcon:   {},
-  primaryTitle:  { fontSize: 20, fontWeight: '800', color: C.white, marginBottom: 10, lineHeight: 26 },
-  primaryBody:   { fontSize: 14, color: C.muted, lineHeight: 21, marginBottom: 18 },
-  primaryActions:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  iconBtnRow:    { flexDirection: 'row', gap: 10 },
-  iconBtn: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: C.cardDeep ?? '#0A1018',
-    borderWidth: 1, borderColor: C.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  aiDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: C.green },
+  aiBadgeText:   { fontSize: 11, fontWeight: '800', color: C.green, letterSpacing: 1.2, flex: 1 },
+  primaryTitle:  { fontSize: 21, fontWeight: '800', color: C.text, marginBottom: 10, lineHeight: 27, letterSpacing: -0.3 },
+  primaryBody:   { fontSize: 14, color: C.soft, lineHeight: 21, marginBottom: 18 },
   executeBtn: {
-    backgroundColor: C.teal,
-    borderRadius: 12, paddingVertical: 12, paddingHorizontal: 22,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: C.surfaceDeep,
+    borderRadius: 14, paddingVertical: 14,
+    ...SHADOW_SOFT,
   },
-  executeBtnText: { fontSize: 14, fontWeight: '800', color: C.bg },
+  executeBtnText: { fontSize: 14, fontWeight: '700', color: C.textInvert, letterSpacing: -0.2 },
 
   // Opp card
   oppCard: {
     backgroundColor: C.card,
-    borderRadius: 18, padding: 18,
-    borderWidth: 1, borderColor: C.border,
+    borderRadius: 18, padding: 16,
     marginBottom: 12,
+    ...SHADOW_SOFT,
   },
   oppIcon: {
     width: 40, height: 40, borderRadius: 12,
-    backgroundColor: C.tealDim, borderWidth: 1, borderColor: C.tealBorder,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
   },
-  oppTitle:  { fontSize: 16, fontWeight: '700', color: C.white, marginBottom: 6 },
-  oppBody:   { fontSize: 13, color: C.muted, lineHeight: 19, marginBottom: 14 },
+  oppTitle:  { fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 6, letterSpacing: -0.2 },
+  oppBody:   { fontSize: 13, color: C.soft, lineHeight: 19, marginBottom: 12 },
+  oppFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   savingBadge: {
-    alignSelf: 'flex-start',
-    borderWidth: 1, borderColor: C.tealBorder,
     borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12,
-    backgroundColor: C.tealDim, marginBottom: 12,
   },
-  savingBadgeText: { fontSize: 13, fontWeight: '700', color: C.teal },
-  oppLink:         { fontSize: 13, color: C.teal, fontWeight: '600' },
+  savingBadgeText: { fontSize: 12, fontWeight: '700' },
+  oppLink:         { fontSize: 13, fontWeight: '700' },
 
   // Travel card
   travelCard: {
     backgroundColor: C.card,
     borderRadius: 20,
-    borderWidth: 1, borderColor: C.border,
     overflow: 'hidden',
-    marginBottom: 28,
+    marginBottom: 22,
+    ...SHADOW,
   },
   mapArea: {
-    height: 160, justifyContent: 'flex-end', padding: 14,
+    height: 130, justifyContent: 'flex-end', padding: 14,
     position: 'relative',
   },
-  mapOverlay:     { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
-  continentBlob: {
-    width: 140, height: 90,
-    backgroundColor: 'rgba(139,103,60,0.45)',
-    borderRadius: 40,
-    transform: [{ rotate: '-12deg' }],
+  travelBadge: {
+    position: 'absolute', top: 12, left: 14,
+    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 20,
   },
-  mapLabel:       { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.75)', zIndex: 1 },
-  travelInfo:     { padding: 16, gap: 10 },
-  travelTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  travelTitle:    { fontSize: 16, fontWeight: '800', color: C.white },
-  travelPct:      { fontSize: 16, fontWeight: '800', color: C.teal },
-  travelAmtRow:   { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  travelSaved:    { fontSize: 12, color: C.teal, fontWeight: '600' },
-  travelGoal:     { fontSize: 12, color: C.faint },
+  travelBadgeText: { fontSize: 10, fontWeight: '800', color: C.textInvert, letterSpacing: 0.8, textTransform: 'uppercase' },
+  mapLabel:        { fontSize: 18, fontWeight: '800', color: C.textInvert, letterSpacing: -0.3 },
+  travelInfo:      { padding: 16, gap: 10 },
+  travelTitleRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  travelTitle:     { fontSize: 15, fontWeight: '700', color: C.text },
+  travelPct:       { fontSize: 15, fontWeight: '800', color: C.green },
+  travelAmtRow:    { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  travelSaved:     { fontSize: 12, color: C.soft, fontWeight: '600' },
+  travelGoal:      { fontSize: 12, color: C.text, fontWeight: '600' },
 
   // Goals
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: C.white, marginBottom: 14 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: C.text, marginBottom: 12, letterSpacing: -0.3 },
   goalsCard: {
     backgroundColor: C.card,
     borderRadius: 18,
-    borderWidth: 1, borderColor: C.border,
-    overflow: 'hidden', marginBottom: 20,
+    overflow: 'hidden', marginBottom: 18,
+    ...SHADOW_SOFT,
   },
   goalRow: {
     flexDirection: 'row', gap: 14, alignItems: 'flex-start',
@@ -381,26 +360,27 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   goalTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  goalTitle:   { fontSize: 14, fontWeight: '700', color: C.white },
-  goalAmt:     { fontSize: 13, color: C.muted },
-  goalCaption: { fontSize: 12, color: C.faint, lineHeight: 17, marginBottom: 2 },
-  goalDivider: { height: 1, backgroundColor: C.border, marginHorizontal: 16 },
+  goalTitle:    { fontSize: 14, fontWeight: '700', color: C.text },
+  goalAmt:      { fontSize: 13, color: C.soft },
+  goalCaption:  { fontSize: 12, color: C.faint, lineHeight: 17, marginBottom: 2 },
+  goalDivider:  { height: 1, backgroundColor: C.border, marginHorizontal: 16 },
 
   // AI Reasoning
   reasoningCard: {
     backgroundColor: C.card,
     borderRadius: 18, padding: 18,
-    borderWidth: 1, borderColor: C.border,
     marginBottom: 8,
+    ...SHADOW_SOFT,
   },
-  reasoningHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  reasoningTitle:  { fontSize: 15, fontWeight: '700', color: C.white },
-  reasoningQuote:  { fontSize: 13, color: C.muted, lineHeight: 20, fontStyle: 'italic' },
+  reasoningHeader:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  reasoningTitle:     { fontSize: 15, fontWeight: '800', color: C.text, letterSpacing: -0.2 },
+  reasoningQuote:     { paddingLeft: 12, borderLeftWidth: 2 },
+  reasoningQuoteText: { fontSize: 13, color: C.soft, lineHeight: 19, fontStyle: 'italic' },
   downloadBtn: {
     marginTop: 18,
-    borderWidth: 1, borderColor: C.border,
-    borderRadius: 12, paddingVertical: 13,
-    alignItems: 'center', backgroundColor: C.cardDeep ?? '#0A1018',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: C.surfaceDeep,
+    borderRadius: 14, paddingVertical: 14,
   },
-  downloadBtnText: { fontSize: 14, fontWeight: '600', color: C.muted },
+  downloadBtnText: { fontSize: 14, fontWeight: '700', color: C.textInvert, letterSpacing: -0.2 },
 });

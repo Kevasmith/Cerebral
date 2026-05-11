@@ -48,12 +48,12 @@ function webScreen(Component, bg) {
   return Screen;
 }
 
-// All screens use dark bg to match the new dark theme nav bar
-const SnapshotScreen  = webScreen(Snapshot,  '#080E14');
-const SpendingScreen  = webScreen(Spending,  '#080E14');
-const SavingsScreen   = webScreen(Savings,   '#080E14');
+// Cream-light bg for the converted screens; Profile still on the old dark palette.
+const SnapshotScreen  = webScreen(Snapshot,  '#F4F2EC');
+const SpendingScreen  = webScreen(Spending,  '#F4F2EC');
+const SavingsScreen   = webScreen(Savings,   '#F4F2EC');
 const ProfileScreen   = webScreen(Profile,   '#080E14');
-const AccountsScreen  = webScreen(Accounts,  '#080E14');
+const AccountsScreen  = webScreen(Accounts,  '#F4F2EC');
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
