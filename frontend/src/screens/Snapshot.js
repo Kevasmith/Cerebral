@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, Platform, Dimensions,
+  RefreshControl, Platform, Dimensions, Linking,
 } from 'react-native';
 import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
@@ -43,6 +43,38 @@ function relativeTime(iso) {
   if (d === 1) return 'Yesterday';
   if (d < 7) return `${d}d ago`;
   return new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+}
+
+// ─── Opportunity tone mapping ─────────────────────────────────────────────────
+const OPP_CONFIG = {
+  gig:                  { label: 'Gig',          icon: 'briefcase-outline',     color: C.amber,  dim: C.amberDim,  border: C.amberBorder  },
+  event:                { label: 'Event',        icon: 'calendar-outline',      color: C.violet, dim: C.violetDim, border: C.violetBorder },
+  side_hustle:          { label: 'Side Hustle',  icon: 'rocket-outline',        color: C.green,  dim: C.greenDim,  border: C.greenBorder  },
+  investment_explainer: { label: 'Investing',    icon: 'trending-up-outline',   color: C.teal,   dim: C.tealDim,   border: C.tealBorder   },
+  networking:           { label: 'Networking',   icon: 'people-outline',        color: C.violet, dim: C.violetDim, border: C.violetBorder },
+};
+
+function OpportunityCard({ opp, onPress }) {
+  const cfg = OPP_CONFIG[opp.type] ?? OPP_CONFIG.investment_explainer;
+  return (
+    <TouchableOpacity style={styles.insightCard} onPress={onPress} activeOpacity={0.85}>
+      <View style={[styles.insightIcon, { backgroundColor: cfg.dim, borderColor: cfg.border }]}>
+        <Ionicons name={cfg.icon} size={18} color={cfg.color} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={styles.insightMeta}>
+          <Text style={[styles.insightLabel, { color: cfg.color }]}>{cfg.label}</Text>
+          {opp.location ? <Text style={styles.insightAge} numberOfLines={1}>{opp.location}</Text> : null}
+        </View>
+        <Text style={[styles.insightTitle, IS_WEB && { fontFamily: 'Geist' }]} numberOfLines={2}>
+          {opp.title}
+        </Text>
+        <Text style={styles.insightBody} numberOfLines={2}>
+          {opp.matchReason ?? opp.description ?? ''}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 }
 
 function InsightCard({ insight, onPress }) {
@@ -114,22 +146,26 @@ function NetWorthCard({ netWorth = 0, change, sparkData }) {
 export default function Snapshot({ navigation }) {
   const insets = useSafeAreaInsets();
 
-  const [chatOpen,   setChatOpen]   = useState(false);
-  const [dashboard,  setDashboard]  = useState(null);
-  const [insights,   setInsights]   = useState([]);
-  const [refreshing, setRefreshing] = useState(false);
+  const [chatOpen,       setChatOpen]       = useState(false);
+  const [dashboard,      setDashboard]      = useState(null);
+  const [insights,       setInsights]       = useState([]);
+  const [opportunities,  setOpportunities]  = useState([]);
+  const [refreshing,     setRefreshing]     = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [dRes, iRes] = await Promise.all([
+      const [dRes, iRes, oRes] = await Promise.all([
         api.get('/accounts/dashboard'),
         api.get('/insights'),
+        api.get('/opportunities').catch(() => ({ data: [] })),
       ]);
       setDashboard(dRes.data);
       setInsights(iRes.data?.slice(0, 3) ?? []);
+      setOpportunities(oRes.data?.slice(0, 3) ?? []);
     } catch {
       setDashboard(null);
       setInsights([]);
+      setOpportunities([]);
     }
   }, []);
 
@@ -226,6 +262,34 @@ export default function Snapshot({ navigation }) {
             <Text style={[styles.hubBtnText, IS_WEB && { fontFamily: 'Geist' }]}>View Intelligence Hub</Text>
             <Ionicons name="arrow-forward" size={15} color={C.textInvert} />
           </TouchableOpacity>
+        </View>
+
+        {/* Opportunities Nearby — top 3 from /opportunities */}
+        <View style={styles.oppSection}>
+          <View style={styles.oppHeader}>
+            <View style={styles.oppLabelRow}>
+              <Ionicons name="location-outline" size={11} color={C.green} />
+              <Text style={[styles.oppEyebrow, IS_WEB && { fontFamily: 'Geist' }]}>OPPORTUNITIES NEARBY</Text>
+            </View>
+            <Text style={[styles.oppTitle, IS_WEB && { fontFamily: 'Geist' }]}>Local opportunities</Text>
+            <Text style={styles.oppBody}>
+              {opportunities.length > 0
+                ? 'Curated for your area by Cerebral.'
+                : 'Set your location in Settings to see local opportunities.'}
+            </Text>
+          </View>
+
+          {opportunities.length > 0 && (
+            <View style={styles.insightsList}>
+              {opportunities.map((opp, i) => (
+                <OpportunityCard
+                  key={opp.id ?? i}
+                  opp={opp}
+                  onPress={() => opp.actionUrl && Linking.openURL(opp.actionUrl)}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
       <ChatSheet visible={chatOpen} onClose={() => setChatOpen(false)} screenKey="snapshot" />
@@ -331,4 +395,18 @@ const styles = StyleSheet.create({
     margin: 14, marginTop: 6,
   },
   hubBtnText: { fontSize: 14, fontWeight: '700', color: C.textInvert },
+
+  // Opportunities Nearby — mirrors aiSection
+  oppSection: {
+    backgroundColor: C.card,
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginBottom: 18,
+    ...SHADOW,
+  },
+  oppHeader:   { padding: 20, borderBottomWidth: 1, borderBottomColor: C.border },
+  oppLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  oppEyebrow:  { fontSize: 11, fontWeight: '800', color: C.green, letterSpacing: 1.2 },
+  oppTitle:    { fontSize: 22, fontWeight: '800', color: C.text, marginBottom: 8, letterSpacing: -0.4 },
+  oppBody:     { fontSize: 13.5, color: C.soft, lineHeight: 20 },
 });

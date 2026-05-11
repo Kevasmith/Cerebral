@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, Platform, Dimensions,
+  RefreshControl, Platform, Modal, TextInput, KeyboardAvoidingView,
 } from 'react-native';
 import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
@@ -10,7 +10,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { C, SHADOW, SHADOW_SOFT } from '../constants/theme';
 
 const IS_WEB = Platform.OS === 'web';
-const { width: SW } = Dimensions.get('window');
+
+const INITIAL_GOALS = [
+  {
+    id: 'travel',    name: 'Europe 2024',         icon: 'airplane-outline',
+    current: 6500,   target: 10000, monthly: 700, color: C.amber,  accent: C.amberDim,
+  },
+  {
+    id: 'emergency', name: 'Emergency Fund',      icon: 'shield-outline',
+    current: 12400,  target: 15000, monthly: 200, color: C.green,  accent: C.greenDim,
+  },
+  {
+    id: 'ev',        name: 'EV Downpayment',      icon: 'car-outline',
+    current: 3200,   target: 8000,  monthly: 0,   color: C.violet, accent: C.violetDim,
+  },
+];
+
+const fmt = (n) => '$' + Math.round(n).toLocaleString();
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 function ProgressBar({ pct, color = C.green, height = 6 }) {
@@ -21,117 +37,189 @@ function ProgressBar({ pct, color = C.green, height = 6 }) {
   );
 }
 
-// ─── Primary AI card ──────────────────────────────────────────────────────────
-function PrimaryCard() {
+// ─── Goal card ────────────────────────────────────────────────────────────────
+function GoalCard({ goal, onEdit }) {
+  const pct = Math.min(100, Math.round((goal.current / Math.max(goal.target, 1)) * 100));
   return (
-    <View style={styles.primaryCard}>
-      <View style={styles.aiBadgeRow}>
-        <View style={styles.aiDot} />
-        <Text style={[styles.aiBadgeText, IS_WEB && { fontFamily: 'Geist' }]}>AI ANALYSIS</Text>
-        <Ionicons name="sparkles" size={13} color={C.green} />
-      </View>
-      <Text style={[styles.primaryTitle, IS_WEB && { fontFamily: 'Geist' }]}>
-        Move $200 to your high-yield savings
-      </Text>
-      <Text style={styles.primaryBody}>
-        Your checking account balance is 15% above your 3-month average. Moving this surplus to your
-        Alpha Savings account will earn an additional 4.5% APY.
-      </Text>
-      <TouchableOpacity style={styles.executeBtn} activeOpacity={0.85}>
-        <Text style={[styles.executeBtnText, IS_WEB && { fontFamily: 'Geist' }]}>Execute Transfer</Text>
-        <Ionicons name="arrow-forward" size={15} color={C.textInvert} />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// ─── Opportunity mini-card ────────────────────────────────────────────────────
-function OppCard({ icon, accent, title, body, savingLabel, linkText }) {
-  const dim = accent === C.violet ? C.violetDim : accent === C.amber ? C.amberDim : C.greenDim;
-  return (
-    <View style={styles.oppCard}>
-      <View style={[styles.oppIcon, { backgroundColor: dim }]}>
-        <Ionicons name={icon} size={18} color={accent} />
-      </View>
-      <Text style={[styles.oppTitle, IS_WEB && { fontFamily: 'Geist' }]}>{title}</Text>
-      <Text style={styles.oppBody}>{body}</Text>
-      <View style={styles.oppFooter}>
-        <View style={[styles.savingBadge, { backgroundColor: dim }]}>
-          <Text style={[styles.savingBadgeText, { color: accent }]}>{savingLabel}</Text>
+    <View style={styles.goalCard}>
+      <View style={styles.goalTop}>
+        <View style={[styles.goalIcon, { backgroundColor: goal.accent }]}>
+          <Ionicons name={goal.icon} size={18} color={goal.color} />
         </View>
-        <TouchableOpacity activeOpacity={0.7}>
-          <Text style={[styles.oppLink, { color: accent }]}>{linkText} →</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-// ─── Travel goal card ─────────────────────────────────────────────────────────
-function TravelGoalCard() {
-  return (
-    <View style={styles.travelCard}>
-      <View style={[
-        styles.mapArea,
-        IS_WEB
-          ? { backgroundImage: 'linear-gradient(145deg, #F59E0B 0%, #EF4444 50%, #7C3AED 100%)' }
-          : { backgroundColor: '#F59E0B' },
-      ]}>
-        <View style={styles.travelBadge}>
-          <Text style={styles.travelBadgeText}>Travel Goal</Text>
-        </View>
-        <Text style={[styles.mapLabel, IS_WEB && { fontFamily: 'Geist' }]}>Europe 2024 ✈︎</Text>
-      </View>
-      <View style={styles.travelInfo}>
-        <View style={styles.travelTitleRow}>
-          <Text style={[styles.travelTitle, IS_WEB && { fontFamily: 'Geist' }]}>European Summer Trip</Text>
-          <Text style={[styles.travelPct, IS_WEB && { fontFamily: 'Geist' }]}>65%</Text>
-        </View>
-        <ProgressBar pct={65} />
-        <View style={styles.travelAmtRow}>
-          <Text style={styles.travelSaved}>$6,500 saved</Text>
-          <Text style={styles.travelGoal}>$10,000 goal</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ─── Savings goal row ─────────────────────────────────────────────────────────
-function GoalRow({ icon, title, current, target, caption, color }) {
-  const pct = Math.round((current / target) * 100);
-  const dim = color === C.violet ? C.violetDim : color === C.amber ? C.amberDim : C.greenDim;
-  return (
-    <View style={styles.goalRow}>
-      <View style={[styles.goalIcon, { backgroundColor: dim }]}>
-        <Ionicons name={icon} size={18} color={color} />
-      </View>
-      <View style={{ flex: 1, gap: 6 }}>
-        <View style={styles.goalTitleRow}>
-          <Text style={[styles.goalTitle, IS_WEB && { fontFamily: 'Geist' }]}>{title}</Text>
-          <Text style={styles.goalAmt}>
-            <Text style={{ color: C.text, fontWeight: '700' }}>${current.toLocaleString()}</Text>
-            {' / '}${target.toLocaleString()}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={styles.goalTitleRow}>
+            <Text style={[styles.goalName, IS_WEB && { fontFamily: 'Geist' }]} numberOfLines={1}>{goal.name}</Text>
+            <Text style={[styles.goalPct, { color: goal.color }, IS_WEB && { fontFamily: 'Geist' }]}>{pct}%</Text>
+          </View>
+          <Text style={styles.goalAmts}>
+            <Text style={{ color: C.text, fontWeight: '700' }}>{fmt(goal.current)}</Text>
+            {' of '}{fmt(goal.target)} · {fmt(goal.monthly)}/mo
           </Text>
         </View>
-        <Text style={styles.goalCaption}>{caption}</Text>
-        <ProgressBar pct={pct} color={color} height={5} />
+        <TouchableOpacity style={styles.editBtn} onPress={onEdit} activeOpacity={0.7}>
+          <Ionicons name="pencil-outline" size={16} color={C.muted} />
+        </TouchableOpacity>
       </View>
+      <View style={{ marginTop: 12 }}>
+        <ProgressBar pct={pct} color={goal.color} height={6} />
+      </View>
+    </View>
+  );
+}
+
+// ─── Edit goal modal ──────────────────────────────────────────────────────────
+function EditGoalModal({ visible, goal, onSave, onClose }) {
+  const [name,    setName]    = useState(goal?.name ?? '');
+  const [current, setCurrent] = useState(String(goal?.current ?? 0));
+  const [target,  setTarget]  = useState(String(goal?.target  ?? 0));
+  const [monthly, setMonthly] = useState(String(goal?.monthly ?? 0));
+
+  React.useEffect(() => {
+    if (visible && goal) {
+      setName(goal.name);
+      setCurrent(String(goal.current));
+      setTarget(String(goal.target));
+      setMonthly(String(goal.monthly));
+    }
+  }, [visible, goal]);
+
+  const save = () => {
+    onSave({
+      ...goal,
+      name:    name.trim() || goal.name,
+      current: Math.max(0, parseFloat(current) || 0),
+      target:  Math.max(1, parseFloat(target)  || 1),
+      monthly: Math.max(0, parseFloat(monthly) || 0),
+    });
+    onClose();
+  };
+
+  if (!goal) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.modalCard}>
+          <Text style={[styles.modalTitle, IS_WEB && { fontFamily: 'Geist' }]}>Edit Goal</Text>
+
+          <Text style={styles.modalLabel}>Name</Text>
+          <TextInput
+            style={[styles.modalInput, IS_WEB && { outlineStyle: 'none' }]}
+            value={name}
+            onChangeText={setName}
+            placeholder="Goal name"
+            placeholderTextColor={C.faint}
+          />
+
+          <View style={styles.modalRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.modalLabel}>Current</Text>
+              <TextInput
+                style={[styles.modalInput, IS_WEB && { outlineStyle: 'none' }]}
+                value={current}
+                onChangeText={setCurrent}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                placeholderTextColor={C.faint}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.modalLabel}>Target</Text>
+              <TextInput
+                style={[styles.modalInput, IS_WEB && { outlineStyle: 'none' }]}
+                value={target}
+                onChangeText={setTarget}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                placeholderTextColor={C.faint}
+              />
+            </View>
+          </View>
+
+          <Text style={styles.modalLabel}>Monthly contribution</Text>
+          <TextInput
+            style={[styles.modalInput, IS_WEB && { outlineStyle: 'none' }]}
+            value={monthly}
+            onChangeText={setMonthly}
+            keyboardType="decimal-pad"
+            placeholder="0"
+            placeholderTextColor={C.faint}
+          />
+
+          <View style={styles.modalBtns}>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={onClose}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalSaveBtn} onPress={save}>
+              <Text style={[styles.modalSaveText, IS_WEB && { fontFamily: 'Geist' }]}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Cerebral Analysis ────────────────────────────────────────────────────────
+function goalAnalysis(goal) {
+  const remaining = Math.max(0, goal.target - goal.current);
+  if (remaining === 0) {
+    return { tone: 'on', sentence: `${goal.name} — Achieved. You hit the ${fmt(goal.target)} target.` };
+  }
+  if (!goal.monthly || goal.monthly <= 0) {
+    return {
+      tone: 'stalled',
+      sentence: `${goal.name} — Stalled. Add a monthly contribution to estimate timing.`,
+    };
+  }
+  const months = Math.ceil(remaining / goal.monthly);
+  const unit = months === 1 ? 'month' : 'months';
+  return {
+    tone: 'on',
+    sentence: `${goal.name} — On track. At ${fmt(goal.monthly)}/mo, you'll hit your ${fmt(goal.target)} target in ${months} ${unit}.`,
+  };
+}
+
+function AnalysisCard({ goals }) {
+  return (
+    <View style={styles.analysisCard}>
+      <View style={styles.analysisHeader}>
+        <Ionicons name="bulb-outline" size={16} color={C.violet} />
+        <Text style={[styles.analysisTitle, IS_WEB && { fontFamily: 'Geist' }]}>CEREBRAL ANALYSIS</Text>
+      </View>
+      {goals.map((g) => {
+        const { tone, sentence } = goalAnalysis(g);
+        const accentBorder = tone === 'stalled' ? C.amberBorder : C.greenBorder;
+        return (
+          <View key={g.id} style={[styles.analysisQuote, { borderLeftColor: accentBorder }]}>
+            <Text style={styles.analysisText}>{sentence}</Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
-export default function Savings({ navigation }) {
+export default function Savings() {
   const insets = useSafeAreaInsets();
-  const [chatOpen, setChatOpen]     = useState(false);
+  const [chatOpen,   setChatOpen]   = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [goals,      setGoals]      = useState(INITIAL_GOALS);
+  const [editing,    setEditing]    = useState(null);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 600));
     setRefreshing(false);
   }, []);
+
+  const saveGoal = (updated) => {
+    setGoals((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+  };
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -153,93 +241,31 @@ export default function Savings({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green} />}
       >
         {/* Hero */}
-        <Text style={[styles.eyebrow, IS_WEB && { fontFamily: 'Geist' }]}>Opportunities</Text>
-        <Text style={[styles.pageTitle, IS_WEB && { fontFamily: 'Geist' }]}>3 strategic moves</Text>
+        <Text style={[styles.eyebrow, IS_WEB && { fontFamily: 'Geist' }]}>SAVINGS</Text>
+        <Text style={[styles.pageTitle, IS_WEB && { fontFamily: 'Geist' }]}>Your goals</Text>
         <Text style={styles.pageSub}>
-          Cerebral AI found ways to optimize your capital this month.
+          Cerebral is tracking progress toward each target.
         </Text>
-        <View style={styles.potentialPill}>
-          <Text style={[styles.potentialAmt, IS_WEB && { fontFamily: 'Geist' }]}>+$425.00</Text>
-          <Text style={styles.potentialLabel}>Monthly potential</Text>
+
+        {/* Goal cards */}
+        <View style={{ gap: 12, marginTop: 18 }}>
+          {goals.map((g) => (
+            <GoalCard key={g.id} goal={g} onEdit={() => setEditing(g)} />
+          ))}
         </View>
 
-        {/* Primary AI card */}
-        <PrimaryCard />
-
-        {/* Opportunity mini-cards */}
-        <OppCard
-          icon="flash-outline"
-          accent={C.green}
-          title="Utility Provider Swap"
-          body="Cerebral found a greener provider with a lower fixed rate for your postcode."
-          savingLabel="Save $15/mo"
-          linkText="View comparison"
-        />
-        <OppCard
-          icon="albums-outline"
-          accent={C.violet}
-          title="Subscription Audit"
-          body="Two streaming services show zero usage over the last 60 days."
-          savingLabel="Save $24.99/mo"
-          linkText="Manage"
-        />
-        <OppCard
-          icon="document-text-outline"
-          accent={C.amber}
-          title="Tax Harvest"
-          body="Opportunity detected in your tech portfolio to offset capital gains."
-          savingLabel="Tax-loss benefit"
-          linkText="Review"
-        />
-
-        {/* Travel goal */}
-        <TravelGoalCard />
-
-        {/* Active Savings Goals */}
-        <Text style={[styles.sectionTitle, IS_WEB && { fontFamily: 'Geist' }]}>Active Savings Goals</Text>
-
-        <View style={styles.goalsCard}>
-          <GoalRow
-            icon="shield-outline"
-            title="Emergency Fund"
-            current={12400}
-            target={15000}
-            caption="Target reached in 4 months at current rate."
-            color={C.green}
-          />
-          <View style={styles.goalDivider} />
-          <GoalRow
-            icon="car-outline"
-            title="New EV Downpayment"
-            current={3200}
-            target={8000}
-            caption="Boost this goal with AI-recommended moves."
-            color={C.violet}
-          />
-        </View>
-
-        {/* AI Reasoning */}
-        <View style={styles.reasoningCard}>
-          <View style={styles.reasoningHeader}>
-            <Ionicons name="bulb-outline" size={16} color={C.violet} />
-            <Text style={[styles.reasoningTitle, IS_WEB && { fontFamily: 'Geist' }]}>Why these moves?</Text>
-          </View>
-          <View style={[styles.reasoningQuote, { borderLeftColor: C.violetBorder }]}>
-            <Text style={styles.reasoningQuoteText}>
-              {'"Liquidity forecasting predicts a 12% drop in expected expenditures next month based on historical travel patterns and the expiration of two subscriptions."'}
-            </Text>
-          </View>
-          <View style={[styles.reasoningQuote, { borderLeftColor: C.greenBorder, marginTop: 10 }]}>
-            <Text style={styles.reasoningQuoteText}>
-              {'"Alpha Savings rates rose 0.25bps Monday; your current checking provider has held flat."'}
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.downloadBtn} activeOpacity={0.85}>
-            <Ionicons name="download-outline" size={15} color={C.textInvert} />
-            <Text style={[styles.downloadBtnText, IS_WEB && { fontFamily: 'Geist' }]}>Download Strategic Report</Text>
-          </TouchableOpacity>
+        {/* Cerebral Analysis */}
+        <View style={{ marginTop: 18 }}>
+          <AnalysisCard goals={goals} />
         </View>
       </ScrollView>
+
+      <EditGoalModal
+        visible={!!editing}
+        goal={editing}
+        onSave={saveGoal}
+        onClose={() => setEditing(null)}
+      />
       <ChatSheet visible={chatOpen} onClose={() => setChatOpen(false)} screenKey="savings" />
     </View>
   );
@@ -265,122 +291,61 @@ const styles = StyleSheet.create({
   // Hero
   eyebrow:   { fontSize: 11, fontWeight: '800', color: C.green, letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 18, marginBottom: 6 },
   pageTitle: { fontSize: 30, fontWeight: '900', color: C.text, letterSpacing: -0.8, marginBottom: 8 },
-  pageSub:   { fontSize: 14, color: C.soft, lineHeight: 21, marginBottom: 14 },
-  potentialPill: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row', alignItems: 'baseline', gap: 8,
-    borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14,
-    backgroundColor: C.greenDim, marginBottom: 20,
-  },
-  potentialAmt:   { fontSize: 15, fontWeight: '800', color: C.green, letterSpacing: -0.2 },
-  potentialLabel: { fontSize: 12, color: C.green, fontWeight: '600' },
+  pageSub:   { fontSize: 14, color: C.soft, lineHeight: 21 },
 
-  // Primary card
-  primaryCard: {
-    backgroundColor: C.card,
-    borderRadius: 22, padding: 20,
-    marginBottom: 14,
-    ...SHADOW,
-  },
-  aiBadgeRow:    { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
-  aiDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: C.green },
-  aiBadgeText:   { fontSize: 11, fontWeight: '800', color: C.green, letterSpacing: 1.2, flex: 1 },
-  primaryTitle:  { fontSize: 21, fontWeight: '800', color: C.text, marginBottom: 10, lineHeight: 27, letterSpacing: -0.3 },
-  primaryBody:   { fontSize: 14, color: C.soft, lineHeight: 21, marginBottom: 18 },
-  executeBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: C.surfaceDeep,
-    borderRadius: 14, paddingVertical: 14,
-    ...SHADOW_SOFT,
-  },
-  executeBtnText: { fontSize: 14, fontWeight: '700', color: C.textInvert, letterSpacing: -0.2 },
-
-  // Opp card
-  oppCard: {
+  // Goal card
+  goalCard: {
     backgroundColor: C.card,
     borderRadius: 18, padding: 16,
-    marginBottom: 12,
     ...SHADOW_SOFT,
   },
-  oppIcon: {
-    width: 40, height: 40, borderRadius: 12,
+  goalTop:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  goalIcon:     { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  goalTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  goalName:     { fontSize: 15, fontWeight: '700', color: C.text, letterSpacing: -0.2, flex: 1, marginRight: 8 },
+  goalPct:      { fontSize: 13, fontWeight: '800' },
+  goalAmts:     { fontSize: 12, color: C.soft, marginTop: 2 },
+  editBtn: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: C.cardAlt,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 12,
   },
-  oppTitle:  { fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 6, letterSpacing: -0.2 },
-  oppBody:   { fontSize: 13, color: C.soft, lineHeight: 19, marginBottom: 12 },
-  oppFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  savingBadge: {
-    borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12,
-  },
-  savingBadgeText: { fontSize: 12, fontWeight: '700' },
-  oppLink:         { fontSize: 13, fontWeight: '700' },
 
-  // Travel card
-  travelCard: {
-    backgroundColor: C.card,
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 22,
-    ...SHADOW,
-  },
-  mapArea: {
-    height: 130, justifyContent: 'flex-end', padding: 14,
-    position: 'relative',
-  },
-  travelBadge: {
-    position: 'absolute', top: 12, left: 14,
-    paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 20,
-  },
-  travelBadgeText: { fontSize: 10, fontWeight: '800', color: C.textInvert, letterSpacing: 0.8, textTransform: 'uppercase' },
-  mapLabel:        { fontSize: 18, fontWeight: '800', color: C.textInvert, letterSpacing: -0.3 },
-  travelInfo:      { padding: 16, gap: 10 },
-  travelTitleRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  travelTitle:     { fontSize: 15, fontWeight: '700', color: C.text },
-  travelPct:       { fontSize: 15, fontWeight: '800', color: C.green },
-  travelAmtRow:    { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  travelSaved:     { fontSize: 12, color: C.soft, fontWeight: '600' },
-  travelGoal:      { fontSize: 12, color: C.text, fontWeight: '600' },
-
-  // Goals
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: C.text, marginBottom: 12, letterSpacing: -0.3 },
-  goalsCard: {
-    backgroundColor: C.card,
-    borderRadius: 18,
-    overflow: 'hidden', marginBottom: 18,
-    ...SHADOW_SOFT,
-  },
-  goalRow: {
-    flexDirection: 'row', gap: 14, alignItems: 'flex-start',
-    padding: 16,
-  },
-  goalIcon: {
-    width: 40, height: 40, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  goalTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  goalTitle:    { fontSize: 14, fontWeight: '700', color: C.text },
-  goalAmt:      { fontSize: 13, color: C.soft },
-  goalCaption:  { fontSize: 12, color: C.faint, lineHeight: 17, marginBottom: 2 },
-  goalDivider:  { height: 1, backgroundColor: C.border, marginHorizontal: 16 },
-
-  // AI Reasoning
-  reasoningCard: {
+  // Cerebral Analysis
+  analysisCard: {
     backgroundColor: C.card,
     borderRadius: 18, padding: 18,
-    marginBottom: 8,
     ...SHADOW_SOFT,
   },
-  reasoningHeader:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  reasoningTitle:     { fontSize: 15, fontWeight: '800', color: C.text, letterSpacing: -0.2 },
-  reasoningQuote:     { paddingLeft: 12, borderLeftWidth: 2 },
-  reasoningQuoteText: { fontSize: 13, color: C.soft, lineHeight: 19, fontStyle: 'italic' },
-  downloadBtn: {
-    marginTop: 18,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: C.surfaceDeep,
-    borderRadius: 14, paddingVertical: 14,
+  analysisHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  analysisTitle:  { fontSize: 12, fontWeight: '800', color: C.violet, letterSpacing: 1.2 },
+  analysisQuote:  { paddingLeft: 12, borderLeftWidth: 2, marginBottom: 10 },
+  analysisText:   { fontSize: 13, color: C.soft, lineHeight: 19 },
+
+  // Modal
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.45)',
+    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24,
   },
-  downloadBtnText: { fontSize: 14, fontWeight: '700', color: C.textInvert, letterSpacing: -0.2 },
+  modalCard: {
+    backgroundColor: C.card, borderRadius: 24, padding: 22,
+    width: '100%', maxWidth: 380,
+    ...SHADOW,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: C.text, marginBottom: 16, letterSpacing: -0.2 },
+  modalLabel: { fontSize: 11, fontWeight: '700', color: C.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 },
+  modalInput: {
+    backgroundColor: C.input, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: C.text, marginBottom: 14,
+  },
+  modalRow:        { flexDirection: 'row', gap: 10 },
+  modalBtns:       { flexDirection: 'row', gap: 10, marginTop: 6 },
+  modalCancelBtn:  {
+    flex: 1, padding: 14, borderRadius: 12,
+    backgroundColor: C.cardAlt, alignItems: 'center',
+  },
+  modalCancelText: { fontSize: 15, color: C.text, fontWeight: '600' },
+  modalSaveBtn:    { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.surfaceDeep, alignItems: 'center' },
+  modalSaveText:   { fontSize: 15, color: C.textInvert, fontWeight: '800', letterSpacing: -0.2 },
 });

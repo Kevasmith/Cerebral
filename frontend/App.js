@@ -16,9 +16,7 @@ import SignIn from './src/screens/SignIn';
 import Onboarding from './src/screens/Onboarding';
 import Dashboard from './src/screens/Dashboard';
 import Transactions from './src/screens/Transactions';
-import Opportunities from './src/screens/Opportunities';
 import Chat from './src/screens/Chat';
-import Profile from './src/screens/Profile';
 import Accounts from './src/screens/Accounts';
 import Settings from './src/screens/Settings';
 import Upgrade from './src/screens/Upgrade';
@@ -48,11 +46,10 @@ function webScreen(Component, bg) {
   return Screen;
 }
 
-// Cream-light bg for the converted screens; Profile still on the old dark palette.
+// Cream-light bg for the converted screens.
 const SnapshotScreen  = webScreen(Snapshot,  '#F4F2EC');
 const SpendingScreen  = webScreen(Spending,  '#F4F2EC');
 const SavingsScreen   = webScreen(Savings,   '#F4F2EC');
-const ProfileScreen   = webScreen(Profile,   '#080E14');
 const AccountsScreen  = webScreen(Accounts,  '#F4F2EC');
 
 const Stack = createNativeStackNavigator();
