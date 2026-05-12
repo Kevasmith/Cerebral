@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, Dimensions,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,81 +18,80 @@ const { width: SW } = Dimensions.get('window');
 // Spending segments + total are derived from /accounts/dashboard at runtime.
 
 // ─── Donut chart ──────────────────────────────────────────────────────────────
+// Uses react-native-svg so iOS / Android / web all render the same arcs.
 function DonutChart({ segments, total }) {
-  const size = Math.min(SW - 80, 220);
+  const size = Math.min(SW - 80, 240);
   const cx = size / 2;
   const cy = size / 2;
   const R  = size * 0.38;
-  const strokeW = size * 0.12;
-  const gap = 0.02; // radians between segments
+  const strokeW = size * 0.13;
+  const gap = segments.length > 1 ? 0.02 : 0; // radians between segments
   const totalLabel = `$${Number(total ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
-  if (IS_WEB) {
-    let cursor = -Math.PI / 2;
-    const arcs = segments.map((seg) => {
-      const sweep = seg.pct * Math.PI * 2 - gap;
-      const startAngle = cursor + gap / 2;
-      const endAngle   = startAngle + sweep;
-      cursor += seg.pct * Math.PI * 2;
+  let cursor = -Math.PI / 2;
+  const arcs = segments.map((seg) => {
+    const sweep = Math.max(0.001, seg.pct * Math.PI * 2 - gap);
+    const startAngle = cursor + gap / 2;
+    const endAngle   = startAngle + sweep;
+    cursor += seg.pct * Math.PI * 2;
 
-      const x1 = cx + R * Math.cos(startAngle);
-      const y1 = cy + R * Math.sin(startAngle);
-      const x2 = cx + R * Math.cos(endAngle);
-      const y2 = cy + R * Math.sin(endAngle);
-      const large = sweep > Math.PI ? 1 : 0;
+    const x1 = cx + R * Math.cos(startAngle);
+    const y1 = cy + R * Math.sin(startAngle);
+    const x2 = cx + R * Math.cos(endAngle);
+    const y2 = cy + R * Math.sin(endAngle);
+    const large = sweep > Math.PI ? 1 : 0;
 
-      return {
-        ...seg,
-        d: `M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2}`,
-      };
-    });
+    return {
+      key: seg.key,
+      color: seg.color,
+      d: `M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2}`,
+    };
+  });
 
-    return (
-      <View style={[styles.donutWrap, { width: size, height: size }]}>
-        <svg width={size} height={size} style={{ display: 'block' }}>
-          {arcs.map((arc) => (
-            <path
-              key={arc.key}
-              d={arc.d}
-              fill="none"
-              stroke={arc.color}
-              strokeWidth={strokeW}
-              strokeLinecap="round"
-            />
-          ))}
-        </svg>
-        <View style={styles.donutCenter}>
-          <Text style={[styles.donutLabel, IS_WEB && { fontFamily: 'Geist' }]}>Total Spend</Text>
-          <Text style={[styles.donutAmount, IS_WEB && { fontFamily: 'Geist' }]}>{totalLabel}</Text>
-        </View>
-      </View>
-    );
-  }
-
-  // Native fallback: simple ring placeholder
   return (
     <View style={[styles.donutWrap, { width: size, height: size }]}>
-      <View style={[styles.donutRingNative, { width: size, height: size, borderRadius: size / 2, borderColor: C.teal }]} />
+      <Svg width={size} height={size}>
+        {arcs.map((arc) => (
+          <Path
+            key={arc.key}
+            d={arc.d}
+            fill="none"
+            stroke={arc.color}
+            strokeWidth={strokeW}
+            strokeLinecap="round"
+          />
+        ))}
+      </Svg>
       <View style={styles.donutCenter}>
-        <Text style={styles.donutLabel}>Total Spend</Text>
+        <Text style={[styles.donutLabel, IS_WEB && { fontFamily: 'Geist' }]}>Total Spend</Text>
         <Text style={[styles.donutAmount, IS_WEB && { fontFamily: 'Geist' }]}>{totalLabel}</Text>
       </View>
     </View>
   );
 }
 
-// ─── Legend row ───────────────────────────────────────────────────────────────
-function LegendRow({ segment }) {
-  const pctStr = `${Math.round(segment.pct * 100)}%`;
+// ─── Breakdown row — full-width category with share bar ──────────────────────
+function BreakdownRow({ segment }) {
+  const pct = Math.round(segment.pct * 100);
   return (
-    <View style={styles.legendRow}>
-      <View style={[styles.legendDot, { backgroundColor: segment.color }]} />
-      <Text style={styles.legendLabel}>{segment.label}</Text>
-      <View style={{ flex: 1 }} />
-      <Text style={styles.legendPct}>{pctStr}</Text>
-      <Text style={styles.legendAmount}>
-        ${segment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-      </Text>
+    <View style={styles.breakdownRow}>
+      <View style={[styles.breakdownIcon, { backgroundColor: segment.colorDim }]}>
+        <Ionicons name={segment.icon} size={16} color={segment.color} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={styles.breakdownTop}>
+          <Text style={styles.breakdownLabel} numberOfLines={1}>{segment.label}</Text>
+          <Text style={[styles.breakdownAmount, IS_WEB && { fontFamily: 'Geist' }]}>
+            ${segment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          </Text>
+        </View>
+        <View style={styles.breakdownBarRow}>
+          <View style={styles.breakdownTrack}>
+            <View style={[styles.breakdownFill, { width: `${pct}%`, backgroundColor: segment.color }]} />
+          </View>
+          <Text style={styles.breakdownPct}>{pct}%</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -153,16 +153,20 @@ export default function Spending({ navigation }) {
   const byCat = snapshot?.spendingByCategory ?? [];
   const total = byCat.reduce((s, c) => s + Number(c.total ?? 0), 0);
   const segments = total > 0
-    ? byCat.map((c) => {
-        const meta = categoryMeta(c.category);
-        return {
-          key: c.category,
-          label: meta.label,
-          amount: Number(c.total ?? 0),
-          pct: Number(c.total ?? 0) / total,
-          color: meta.color,
-        };
-      })
+    ? byCat
+        .map((c) => {
+          const meta = categoryMeta(c.category);
+          return {
+            key: c.category,
+            label: meta.label,
+            amount: Number(c.total ?? 0),
+            pct: Number(c.total ?? 0) / total,
+            color: meta.color,
+            colorDim: meta.colorDim,
+            icon: meta.icon,
+          };
+        })
+        .sort((a, b) => b.amount - a.amount)
     : [];
 
   const trend = snapshot?.spendingTrend;
@@ -204,34 +208,46 @@ export default function Spending({ navigation }) {
           </Text>
         </View>
 
-        {/* Donut + legend card — only render with real spending data */}
+        {/* Donut card — chart only; the per-category breakdown lives below. */}
         {segments.length > 0 ? (
           <View style={styles.chartCard}>
             <View style={styles.donutRow}>
               <DonutChart segments={segments} total={total} />
             </View>
-            <View style={styles.legendList}>
-              {segments.map(s => <LegendRow key={s.key} segment={s} />)}
-            </View>
           </View>
         ) : null}
 
-        {/* VS Last Month — only when both months have data */}
-        {showTrend && (
-          <View style={styles.vsCard}>
-            <View style={styles.vsLeft}>
-              <Text style={styles.vsEyebrow}>VS LAST MONTH</Text>
-              <View style={styles.vsAmountRow}>
-                <Text style={[styles.vsAmount, IS_WEB && { fontFamily: 'Geist' }]}>
-                  {trendDelta >= 0 ? '+' : '−'}${Math.abs(trendDelta).toFixed(0)}
-                </Text>
-                <View style={styles.vsPill}>
-                  <Ionicons name={trendUp ? 'trending-up' : 'trending-down'} size={11} color={C.teal} />
-                  <Text style={styles.vsPillText}>
-                    {trendUp ? '+' : '−'}{Math.abs(trend.percentageChange).toFixed(1)}%
+        {/* Spending Breakdown — every category with share bar + amount */}
+        {segments.length > 0 && (
+          <View style={styles.breakdownCard}>
+            <View style={styles.breakdownHeader}>
+              <Text style={[styles.breakdownTitle, IS_WEB && { fontFamily: 'Geist' }]}>Spending Breakdown</Text>
+              {showTrend && (
+                <View style={[styles.deltaPill, { backgroundColor: trendUp ? C.redDim : C.greenDim }]}>
+                  <Ionicons
+                    name={trendUp ? 'trending-up' : 'trending-down'}
+                    size={11}
+                    color={trendUp ? C.red : C.green}
+                  />
+                  <Text style={[styles.deltaPillText, { color: trendUp ? C.red : C.green }]}>
+                    {trendUp ? '+' : '−'}{Math.abs(trend.percentageChange).toFixed(1)}% vs last month
                   </Text>
                 </View>
-              </View>
+              )}
+            </View>
+
+            {showTrend && (
+              <Text style={styles.breakdownSub}>
+                {trendUp ? "You're spending " : "You're saving "}
+                <Text style={{ color: C.text, fontWeight: '700' }}>
+                  ${Math.abs(trendDelta).toFixed(0)}
+                </Text>
+                {trendUp ? ' more than last month.' : ' compared with last month.'}
+              </Text>
+            )}
+
+            <View style={styles.breakdownList}>
+              {segments.map((s) => <BreakdownRow key={s.key} segment={s} />)}
             </View>
           </View>
         )}
@@ -296,7 +312,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...SHADOW,
   },
-  donutRow: { alignItems: 'center', marginBottom: 20 },
+  donutRow:  { alignItems: 'center' },
   donutWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   donutCenter: {
     position: 'absolute',
@@ -304,36 +320,39 @@ const styles = StyleSheet.create({
   },
   donutLabel:  { fontSize: 11, color: C.faint, fontWeight: '700', letterSpacing: 1, marginBottom: 4, textTransform: 'uppercase' },
   donutAmount: { fontSize: 22, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  donutRingNative: {
-    position: 'absolute',
-    borderWidth: 14, borderColor: C.green,
-    backgroundColor: 'transparent',
-  },
 
-  // Legend
-  legendList: { gap: 12 },
-  legendRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  legendDot:  { width: 10, height: 10, borderRadius: 5 },
-  legendLabel:{ fontSize: 14, color: C.text, flex: 1 },
-  legendPct:  { fontSize: 13, color: C.faint, marginRight: 10, width: 36, textAlign: 'right' },
-  legendAmount: { fontSize: 14, fontWeight: '700', color: C.text, width: 90, textAlign: 'right' },
-
-  // VS Last Month
-  vsCard: {
+  // Spending Breakdown
+  breakdownCard: {
     backgroundColor: C.card,
-    borderRadius: 18, padding: 20,
-    marginBottom: 14,
-    ...SHADOW_SOFT,
+    borderRadius: 22, padding: 20,
+    marginBottom: 18,
+    ...SHADOW,
   },
-  vsEyebrow:     { fontSize: 10, fontWeight: '800', color: C.faint, letterSpacing: 1.2, marginBottom: 6 },
-  vsAmountRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  vsAmount:      { fontSize: 26, fontWeight: '900', color: C.text, letterSpacing: -0.5 },
-  vsPill: {
+  breakdownHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: 10, marginBottom: 6,
+  },
+  breakdownTitle: { fontSize: 18, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
+  breakdownSub:   { fontSize: 13, color: C.soft, lineHeight: 19, marginBottom: 16 },
+  deltaPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: C.greenDim,
-    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
   },
-  vsPillText:    { fontSize: 11, fontWeight: '700', color: C.green },
+  deltaPillText: { fontSize: 11, fontWeight: '800' },
+
+  breakdownList: { gap: 14 },
+  breakdownRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  breakdownIcon: {
+    width: 36, height: 36, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  breakdownTop:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 },
+  breakdownLabel:{ fontSize: 14, fontWeight: '700', color: C.text, flex: 1, marginRight: 8 },
+  breakdownAmount:{ fontSize: 14, fontWeight: '800', color: C.text, letterSpacing: -0.2 },
+  breakdownBarRow:{ flexDirection: 'row', alignItems: 'center', gap: 10 },
+  breakdownTrack: { flex: 1, height: 5, borderRadius: 3, backgroundColor: C.track, overflow: 'hidden' },
+  breakdownFill:  { height: 5, borderRadius: 3 },
+  breakdownPct:   { fontSize: 11, fontWeight: '700', color: C.faint, width: 32, textAlign: 'right' },
 
   // Empty state
   emptyTxBox: {
