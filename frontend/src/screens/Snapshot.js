@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, Platform, Dimensions, Linking,
+  RefreshControl, Platform, Dimensions,
 } from 'react-native';
 import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
@@ -45,35 +45,47 @@ function relativeTime(iso) {
   return new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
 }
 
-// ─── Opportunity tone mapping ─────────────────────────────────────────────────
-const OPP_CONFIG = {
-  gig:                  { label: 'Gig',          icon: 'briefcase-outline',     color: C.amber,  dim: C.amberDim,  border: C.amberBorder  },
-  event:                { label: 'Event',        icon: 'calendar-outline',      color: C.violet, dim: C.violetDim, border: C.violetBorder },
-  side_hustle:          { label: 'Side Hustle',  icon: 'rocket-outline',        color: C.green,  dim: C.greenDim,  border: C.greenBorder  },
-  investment_explainer: { label: 'Investing',    icon: 'trending-up-outline',   color: C.teal,   dim: C.tealDim,   border: C.tealBorder   },
-  networking:           { label: 'Networking',   icon: 'people-outline',        color: C.violet, dim: C.violetDim, border: C.violetBorder },
+// ─── Cerebral Pick tone mapping ───────────────────────────────────────────────
+const PICK_CONFIG = {
+  cash_optimization:    { label: 'Cash Move',     icon: 'wallet-outline',      color: C.green,  dim: C.greenDim,  border: C.greenBorder  },
+  allocation_rebalance: { label: 'Rebalance',     icon: 'swap-horizontal',     color: C.violet, dim: C.violetDim, border: C.violetBorder },
+  goal_acceleration:    { label: 'Accelerate',    icon: 'rocket-outline',      color: C.amber,  dim: C.amberDim,  border: C.amberBorder  },
+  investment_explainer: { label: 'Learn',         icon: 'trending-up-outline', color: C.teal,   dim: C.tealDim,   border: C.tealBorder   },
 };
 
-function OpportunityCard({ opp, onPress }) {
-  const cfg = OPP_CONFIG[opp.type] ?? OPP_CONFIG.investment_explainer;
+function fmtMoney(n) {
+  if (typeof n !== 'number' || !isFinite(n)) return '';
+  return '$' + Math.round(n).toLocaleString();
+}
+
+function impactLabel(impact) {
+  if (!impact) return '';
+  if (impact.kind === 'annual_return') return `+${fmtMoney(impact.value)}/yr`;
+  if (impact.kind === 'months_faster') return `${impact.value} mo faster`;
+  return '';
+}
+
+function PickCard({ pick }) {
+  const cfg = PICK_CONFIG[pick.type] ?? PICK_CONFIG.investment_explainer;
+  const impact = impactLabel(pick.expectedImpact);
   return (
-    <TouchableOpacity style={styles.insightCard} onPress={onPress} activeOpacity={0.85}>
+    <View style={styles.insightCard}>
       <View style={[styles.insightIcon, { backgroundColor: cfg.dim, borderColor: cfg.border }]}>
         <Ionicons name={cfg.icon} size={18} color={cfg.color} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={styles.insightMeta}>
           <Text style={[styles.insightLabel, { color: cfg.color }]}>{cfg.label}</Text>
-          {opp.location ? <Text style={styles.insightAge} numberOfLines={1}>{opp.location}</Text> : null}
+          {impact ? <Text style={[styles.insightAge, { color: cfg.color, fontWeight: '700' }]}>{impact}</Text> : null}
         </View>
         <Text style={[styles.insightTitle, IS_WEB && { fontFamily: 'Geist' }]} numberOfLines={2}>
-          {opp.title}
+          {pick.title}
         </Text>
-        <Text style={styles.insightBody} numberOfLines={2}>
-          {opp.matchReason ?? opp.description ?? ''}
+        <Text style={styles.insightBody} numberOfLines={3}>
+          {pick.matchReason ?? pick.description ?? ''}
         </Text>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -146,26 +158,26 @@ function NetWorthCard({ netWorth = 0, change, sparkData }) {
 export default function Snapshot({ navigation }) {
   const insets = useSafeAreaInsets();
 
-  const [chatOpen,       setChatOpen]       = useState(false);
-  const [dashboard,      setDashboard]      = useState(null);
-  const [insights,       setInsights]       = useState([]);
-  const [opportunities,  setOpportunities]  = useState([]);
-  const [refreshing,     setRefreshing]     = useState(false);
+  const [chatOpen,   setChatOpen]   = useState(false);
+  const [dashboard,  setDashboard]  = useState(null);
+  const [insights,   setInsights]   = useState([]);
+  const [picks,      setPicks]      = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [dRes, iRes, oRes] = await Promise.all([
+      const [dRes, iRes, pRes] = await Promise.all([
         api.get('/accounts/dashboard'),
         api.get('/insights'),
         api.get('/opportunities').catch(() => ({ data: [] })),
       ]);
       setDashboard(dRes.data);
       setInsights(iRes.data?.slice(0, 3) ?? []);
-      setOpportunities(oRes.data?.slice(0, 3) ?? []);
+      setPicks(pRes.data?.slice(0, 3) ?? []);
     } catch {
       setDashboard(null);
       setInsights([]);
-      setOpportunities([]);
+      setPicks([]);
     }
   }, []);
 
@@ -264,29 +276,25 @@ export default function Snapshot({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Opportunities Nearby — top 3 from /opportunities */}
+        {/* Cerebral Picks — money-optimization moves derived from accounts + plan split */}
         <View style={styles.oppSection}>
           <View style={styles.oppHeader}>
             <View style={styles.oppLabelRow}>
-              <Ionicons name="location-outline" size={11} color={C.green} />
-              <Text style={[styles.oppEyebrow, IS_WEB && { fontFamily: 'Geist' }]}>OPPORTUNITIES NEARBY</Text>
+              <Ionicons name="sparkles" size={11} color={C.green} />
+              <Text style={[styles.oppEyebrow, IS_WEB && { fontFamily: 'Geist' }]}>CEREBRAL PICKS</Text>
             </View>
-            <Text style={[styles.oppTitle, IS_WEB && { fontFamily: 'Geist' }]}>Local opportunities</Text>
+            <Text style={[styles.oppTitle, IS_WEB && { fontFamily: 'Geist' }]}>Smart money moves</Text>
             <Text style={styles.oppBody}>
-              {opportunities.length > 0
-                ? 'Curated for your area by Cerebral.'
-                : 'Set your location in Settings to see local opportunities.'}
+              {picks.length > 0
+                ? 'Tailored to your balances and the split you agreed for your goal.'
+                : 'Connect a bank to see personalized money moves.'}
             </Text>
           </View>
 
-          {opportunities.length > 0 && (
+          {picks.length > 0 && (
             <View style={styles.insightsList}>
-              {opportunities.map((opp, i) => (
-                <OpportunityCard
-                  key={opp.id ?? i}
-                  opp={opp}
-                  onPress={() => opp.actionUrl && Linking.openURL(opp.actionUrl)}
-                />
+              {picks.map((p, i) => (
+                <PickCard key={p.id ?? i} pick={p} />
               ))}
             </View>
           )}

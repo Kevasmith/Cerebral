@@ -13,7 +13,6 @@ import { User } from './entities/user.entity';
 import { Account } from './entities/account.entity';
 import { Transaction } from './entities/transaction.entity';
 import { Insight } from './entities/insight.entity';
-import { Opportunity } from './entities/opportunity.entity';
 import { Preference } from './entities/preference.entity';
 
 import { UsersModule } from './modules/users/users.module';
@@ -50,7 +49,7 @@ import { rlsContext } from './common/rls/rls-context';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const db = config.get('database') as any;
-        const entities = [User, Account, Transaction, Insight, Opportunity, Preference, WaitlistEntry, Subscription];
+        const entities = [User, Account, Transaction, Insight, Preference, WaitlistEntry, Subscription];
 
         const syncEnv = process.env.TYPEORM_SYNCHRONIZE;
         const synchronize = syncEnv === 'false' ? false : true;
