@@ -9,7 +9,23 @@ import TrendLine from '../components/TrendLine';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
+import useAuthStore from '../store/authStore';
 import { C, SHADOW } from '../constants/theme';
+
+// Returns a time-of-day greeting in the user's local time.
+function timeGreeting(now = new Date()) {
+  const h = now.getHours();
+  if (h < 5)  return 'Good night';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  if (h < 21) return 'Good evening';
+  return 'Good night';
+}
+
+function firstName(displayName) {
+  if (!displayName) return '';
+  return String(displayName).trim().split(/\s+/)[0];
+}
 
 const IS_WEB = Platform.OS === 'web';
 const { width: SW } = Dimensions.get('window');
@@ -170,7 +186,8 @@ function NetWorthCard({ netWorth = 0, change, sparkData, forecast }) {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function Snapshot({ navigation }) {
-  const insets = useSafeAreaInsets();
+  const insets  = useSafeAreaInsets();
+  const profile = useAuthStore((s) => s.profile);
 
   const [chatOpen,   setChatOpen]   = useState(false);
   const [dashboard,  setDashboard]  = useState(null);
@@ -218,24 +235,36 @@ export default function Snapshot({ navigation }) {
     ? (trendDir === 'up' ? Math.abs(trendPct) : -Math.abs(trendPct))
     : undefined;
 
+  const greeting = timeGreeting();
+  const name     = firstName(profile?.displayName);
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerLeft} onPress={() => setChatOpen(true)} activeOpacity={0.75}>
-          <CerebralAvatar />
-          <Text style={[styles.brand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bellBtn}
-          activeOpacity={0.7}
-          onPress={() => navigation?.navigate?.('IntelligenceHub', { insights })}
-        >
-          <Ionicons name="notifications-outline" size={22} color={C.text} />
-          {insights.length > 0 && (
-            <View style={styles.bellDot} />
-          )}
-        </TouchableOpacity>
+      {/* Green hero — header row + time-aware greeting */}
+      <View style={styles.hero}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerLeft} onPress={() => setChatOpen(true)} activeOpacity={0.75}>
+            <CerebralAvatar />
+            <Text style={[styles.brand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.bellBtn}
+            activeOpacity={0.7}
+            onPress={() => navigation?.navigate?.('IntelligenceHub', { insights })}
+          >
+            <Ionicons name="notifications-outline" size={22} color={C.textInvert} />
+            {insights.length > 0 && (
+              <View style={styles.bellDot} />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.heroBody}>
+          <Text style={[styles.heroGreeting, IS_WEB && { fontFamily: 'Geist' }]}>{greeting},</Text>
+          <Text style={[styles.heroName, IS_WEB && { fontFamily: 'Geist' }]} numberOfLines={1}>
+            {name || 'welcome back'}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
@@ -335,26 +364,37 @@ export default function Snapshot({ navigation }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: C.bg },
-  scroll:  { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 8 },
+  // Root carries the green so the status-bar safe area renders green too.
+  root:    { flex: 1, backgroundColor: C.green },
+  // Scroll body sits on cream. The hero above scrolls away as the user pulls.
+  scroll:  { flex: 1, backgroundColor: C.bg },
+  content: { paddingHorizontal: 16, paddingTop: 20 },
 
-  // Header
+  // ── Green hero ──
+  hero: {
+    backgroundColor: C.green,
+    paddingHorizontal: 16,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: C.border,
-    backgroundColor: C.bg,
+    paddingVertical: 12,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brand:   { fontSize: 17, fontWeight: '800', color: C.text },
-  bellBtn: { padding: 4, position: 'relative' },
+  brand:      { fontSize: 17, fontWeight: '800', color: C.textInvert, letterSpacing: -0.2 },
+  bellBtn:    { padding: 4, position: 'relative' },
   bellDot: {
     position: 'absolute', top: 4, right: 4,
     width: 8, height: 8, borderRadius: 4,
-    backgroundColor: C.red,
-    borderWidth: 1.5, borderColor: C.bg,
+    backgroundColor: '#FFE066',
+    borderWidth: 1.5, borderColor: C.green,
   },
+
+  heroBody:     { paddingTop: 18, paddingBottom: 6 },
+  heroGreeting: { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.80)', letterSpacing: -0.1 },
+  heroName:     { fontSize: 30, fontWeight: '900', color: C.textInvert, letterSpacing: -0.6, marginTop: 4 },
 
   // Net Worth Card
   networthCard: {
