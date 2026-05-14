@@ -7,6 +7,7 @@ export type PickCategory =
   | 'cash_optimization'
   | 'allocation_rebalance'
   | 'goal_acceleration'
+  | 'bill_reduction'
   | 'investment_explainer';
 
 export interface CerebralPick {
@@ -183,7 +184,26 @@ export class OpportunitiesService {
       }
     }
 
-    // ── Rule 4: Investment explainer (educational backstop) ────────────────
+    // ── Rule 4: Bill & fee reduction — categorized "fees" charges this month
+    const feesThisMonth = (dashboard?.spendingByCategory ?? [])
+      .filter((r) => r.category === 'fees')
+      .reduce((s, r) => s + Number(r.total ?? 0), 0);
+    if (feesThisMonth >= 5) {
+      const annualFees = feesThisMonth * 12;
+      picks.push({
+        id: 'bill_reduction_fees',
+        type: 'bill_reduction',
+        title: `Trim ~${fmt(annualFees)}/yr in bank fees`,
+        description:
+          `You paid ${fmt(feesThisMonth)} in account fees this month. ` +
+          `Many no-fee chequing accounts in Canada fit a balance pattern like yours — worth a quick comparison.`,
+        matchReason: 'Cerebral spotted recurring bank fees that may be avoidable.',
+        expectedImpact: { kind: 'annual_return', value: annualFees },
+        confidence: 0.85,
+      });
+    }
+
+    // ── Rule 5: Investment explainer (educational backstop) ────────────────
     picks.push({
       id: `investment_explainer_${goalKey}`,
       type: 'investment_explainer',

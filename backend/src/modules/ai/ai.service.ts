@@ -37,20 +37,6 @@ export interface WeeklySummaryContext {
   incomeThisWeek: number;
 }
 
-export interface OpportunityMatchContext {
-  userGoal: UserGoal;
-  userInterests: UserInterest[];
-  location: string;
-  topSpendingCategory: string;
-  availableCash: number;
-  opportunity: {
-    type: string;
-    title: string;
-    description: string;
-    location: string | null;
-  };
-}
-
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -174,48 +160,6 @@ export class AiService {
     }
   }
 
-  // ─── Opportunity Matching ─────────────────────────────────────────────────
-
-  async generateOpportunityMatch(
-    ctx: OpportunityMatchContext,
-  ): Promise<{ relevanceScore: number; matchReason: string; callToAction: string }> {
-    if (!this.client) {
-      return { relevanceScore: 5, matchReason: 'Relevant to your financial goals.', callToAction: 'Explore now' };
-    }
-
-    const skill = this.skills.loadSkill('opportunity_matching.skill.md');
-    const dynamicPrompt = this.buildOpportunityMatchUserMessage(ctx);
-
-    try {
-      const response = await this.client.chat.completions.create({
-        model: 'gpt-4.1',
-        messages: [
-          { role: 'system', content: skill },
-          { role: 'user', content: dynamicPrompt },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 150,
-        temperature: 0.6,
-      });
-
-      const content = response.choices[0]?.message?.content ?? '{}';
-      const parsed = JSON.parse(content) as {
-        relevanceScore: number;
-        matchReason: string;
-        callToAction: string;
-      };
-
-      return {
-        relevanceScore: Math.min(10, Math.max(1, Number(parsed.relevanceScore) || 5)),
-        matchReason: parsed.matchReason || 'Relevant to your current goal.',
-        callToAction: parsed.callToAction || 'Explore now',
-      };
-    } catch (err) {
-      this.logger.error('OpenAI opportunity match failed', err);
-      return { relevanceScore: 5, matchReason: 'Relevant to your financial goals.', callToAction: 'Explore now' };
-    }
-  }
-
   // ─── User Message Builders ────────────────────────────────────────────────
 
   private buildInsightUserMessage(ctx: InsightContext): string {
@@ -242,6 +186,17 @@ CHANGE: $${ctx.data.delta} (${ctx.data.percentChange}%)`,
       savings_opportunity: `TRIGGER: savings_opportunity
 CATEGORY: ${ctx.data.category}
 MONTHLY AMOUNT: $${ctx.data.amount}`,
+
+      category_creep: `TRIGGER: category_creep
+CATEGORY: ${ctx.data.category}
+SHARE THIS MONTH: ${ctx.data.currentShare}% (was ${ctx.data.previousShare}%)
+POINT CHANGE: +${ctx.data.pointDelta} pts
+THIS MONTH AMOUNT: $${ctx.data.currentAmount}`,
+
+      lifestyle_inflation: `TRIGGER: lifestyle_inflation
+DISCRETIONARY SPEND THIS MONTH: $${ctx.data.current}
+DISCRETIONARY SPEND LAST MONTH: $${ctx.data.previous}
+DELTA: +$${ctx.data.delta} (+${ctx.data.percentChange}%)`,
     };
 
     const trigger =
@@ -328,23 +283,6 @@ LAST WEEK TOTAL: $${ctx.lastWeekTotal.toFixed(2)}
 Generate the weekly summary now.`;
   }
 
-  private buildOpportunityMatchUserMessage(ctx: OpportunityMatchContext): string {
-    return `USER PROFILE:
-- Financial goal: ${ctx.userGoal}
-- Interests: ${ctx.userInterests.join(', ')}
-- Location: ${ctx.location}
-- Top spending category: ${ctx.topSpendingCategory}
-- Available cash: $${ctx.availableCash.toFixed(2)} CAD
-
-OPPORTUNITY:
-- Type: ${ctx.opportunity.type}
-- Title: ${ctx.opportunity.title}
-- Description: ${ctx.opportunity.description}
-- Location: ${ctx.opportunity.location ?? 'Remote / Canada'}
-
-Score this opportunity for this user and explain the match.`;
-  }
-
   // ─── Prompt Injection Guard ───────────────────────────────────────────────
 
   private sanitizeUserMessage(message: string): string {
@@ -393,6 +331,14 @@ Score this opportunity for this user and explain the match.`;
       income_trend: {
         title: `Income ${ctx.data.direction === 'up' ? 'increased' : 'dropped'} by $${ctx.data.delta}`,
         body: `Your income ${ctx.data.direction === 'up' ? 'grew' : 'fell'} ${ctx.data.percentChange}% this month. ${ctx.data.direction === 'up' ? 'Consider saving a portion before it gets absorbed by expenses.' : 'Review discretionary spending to buffer any shortfall.'}`,
+      },
+      category_creep: {
+        title: `${ctx.data.category} is taking a bigger slice`,
+        body: `${ctx.data.category} is now ${ctx.data.currentShare}% of your spending — up from ${ctx.data.previousShare}% last month. Worth a look if it's not where you'd want the share to be growing.`,
+      },
+      lifestyle_inflation: {
+        title: `Discretionary spend up $${ctx.data.delta}`,
+        body: `Your discretionary spending grew from $${ctx.data.previous} to $${ctx.data.current} this month — about ${ctx.data.percentChange}% higher. Cerebral is noting the new baseline.`,
       },
     };
 

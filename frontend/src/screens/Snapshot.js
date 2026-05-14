@@ -50,6 +50,7 @@ const PICK_CONFIG = {
   cash_optimization:    { label: 'Cash Move',     icon: 'wallet-outline',      color: C.green,  dim: C.greenDim,  border: C.greenBorder  },
   allocation_rebalance: { label: 'Rebalance',     icon: 'swap-horizontal',     color: C.violet, dim: C.violetDim, border: C.violetBorder },
   goal_acceleration:    { label: 'Accelerate',    icon: 'rocket-outline',      color: C.amber,  dim: C.amberDim,  border: C.amberBorder  },
+  bill_reduction:       { label: 'Trim Fees',     icon: 'cut-outline',         color: C.red,    dim: C.redDim,    border: C.amberBorder  },
   investment_explainer: { label: 'Learn',         icon: 'trending-up-outline', color: C.teal,   dim: C.tealDim,   border: C.tealBorder   },
 };
 
@@ -114,7 +115,7 @@ function InsightCard({ insight, onPress }) {
 }
 
 // ─── Net Worth Card ───────────────────────────────────────────────────────────
-function NetWorthCard({ netWorth = 0, change, sparkData }) {
+function NetWorthCard({ netWorth = 0, change, sparkData, forecast }) {
   const fmt = (n) => {
     const [whole, dec] = Math.abs(n).toFixed(2).split('.');
     return { whole: '$' + parseInt(whole).toLocaleString(), dec };
@@ -123,6 +124,10 @@ function NetWorthCard({ netWorth = 0, change, sparkData }) {
   const showChange = typeof change === 'number';
   const showSpark  = Array.isArray(sparkData) && sparkData.length > 1;
   const positive   = (change ?? 0) >= 0;
+
+  const cf = forecast?.cashFlow;
+  const showForecast = cf && typeof cf.projectedLow === 'number' && (cf.confidence ?? 0) >= 0.5;
+  const forecastDate = showForecast ? new Date(cf.projectedLowDate).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : null;
 
   return (
     <View style={styles.networthCard}>
@@ -150,6 +155,15 @@ function NetWorthCard({ netWorth = 0, change, sparkData }) {
           <Sparkline points={sparkData} />
         </View>
       )}
+      {showForecast && (
+        <View style={styles.forecastRow}>
+          <Ionicons name="git-branch-outline" size={12} color={C.faint} />
+          <Text style={styles.forecastText}>
+            Likely month-end: <Text style={{ color: C.text, fontWeight: '700' }}>${cf.projectedLow.toLocaleString()}</Text>
+            {forecastDate ? ` · ${forecastDate}` : ''}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -162,22 +176,26 @@ export default function Snapshot({ navigation }) {
   const [dashboard,  setDashboard]  = useState(null);
   const [insights,   setInsights]   = useState([]);
   const [picks,      setPicks]      = useState([]);
+  const [forecast,   setForecast]   = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [dRes, iRes, pRes] = await Promise.all([
+      const [dRes, iRes, pRes, fRes] = await Promise.all([
         api.get('/accounts/dashboard'),
         api.get('/insights'),
         api.get('/opportunities').catch(() => ({ data: [] })),
+        api.get('/forecast').catch(() => ({ data: null })),
       ]);
       setDashboard(dRes.data);
       setInsights(iRes.data?.slice(0, 3) ?? []);
       setPicks(pRes.data?.slice(0, 3) ?? []);
+      setForecast(fRes.data ?? null);
     } catch {
       setDashboard(null);
       setInsights([]);
       setPicks([]);
+      setForecast(null);
     }
   }, []);
 
@@ -219,7 +237,7 @@ export default function Snapshot({ navigation }) {
         }
       >
         {/* Net Worth */}
-        <NetWorthCard netWorth={netWorth} change={changeValue} />
+        <NetWorthCard netWorth={netWorth} change={changeValue} forecast={forecast} />
 
         {/* Manage Assets — black pill */}
         <TouchableOpacity
@@ -341,6 +359,10 @@ const styles = StyleSheet.create({
   networthAmtRow:{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 4 },
   networthAmt:   { fontSize: 38, fontWeight: '800', color: C.text, letterSpacing: -1.4 },
   networthDec:   { fontSize: 18, fontWeight: '600', color: C.faint, marginBottom: 4, marginLeft: 1 },
+
+  // Forecast subtitle — calm, low-emphasis "likely month-end" line.
+  forecastRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  forecastText: { fontSize: 12, color: C.soft, flexShrink: 1 },
 
   // Manage Assets — black pill
   manageBtn: {

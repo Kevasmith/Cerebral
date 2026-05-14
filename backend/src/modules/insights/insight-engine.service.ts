@@ -13,6 +13,27 @@ import { NotificationsService } from '../notifications/notifications.service';
 const IDLE_CASH_THRESHOLD = 1000;
 const OVERSPEND_PERCENT_THRESHOLD = 10;
 const CATEGORY_OVERSPEND_THRESHOLD = 15;
+const CATEGORY_CREEP_POINT_THRESHOLD = 5;       // percentage points of total spend
+const LIFESTYLE_INFLATION_PERCENT_THRESHOLD = 20;
+
+// Discretionary categories used for lifestyle-inflation detection. Mirrors the
+// "discretionary" framing in the behavioural-pattern-recognition skill.
+const DISCRETIONARY_CATEGORIES = [
+  TransactionCategory.FOOD,
+  TransactionCategory.ENTERTAINMENT,
+  TransactionCategory.SHOPPING,
+  TransactionCategory.TRAVEL,
+];
+
+// Categories excluded from category-creep detection (not user-controlled).
+const NON_DISCRETIONARY_CATEGORIES = new Set<string>([
+  TransactionCategory.INCOME,
+  TransactionCategory.TRANSFER,
+  TransactionCategory.BILLS,
+  TransactionCategory.LOANS,
+  TransactionCategory.FEES,
+  TransactionCategory.GOVERNMENT,
+]);
 
 interface RuleTrigger {
   type: InsightType;
@@ -193,7 +214,63 @@ export class InsightEngineService {
       });
     }
 
-    // Rule 6: Income trend
+    // Rule 6.5: Category creep — a single category's *share* of total spend
+    // grew by 5+ percentage points vs last month. Different from overspend:
+    // composition shift, not amount. Skip non-discretionary categories.
+    if (currentTotal > 0 && previousTotal > 0) {
+      for (const row of currentSpend) {
+        if (NON_DISCRETIONARY_CATEGORIES.has(row.category)) continue;
+        const currShare = (row.total / currentTotal) * 100;
+        const prevRow = previousSpend.find((r) => r.category === row.category);
+        const prevShare = prevRow ? (prevRow.total / previousTotal) * 100 : 0;
+        const pointDelta = currShare - prevShare;
+        if (pointDelta >= CATEGORY_CREEP_POINT_THRESHOLD) {
+          triggers.push({
+            type: InsightType.OVERSPENDING,
+            aiType: 'category_creep',
+            data: {
+              category: row.category,
+              currentShare: currShare.toFixed(1),
+              previousShare: prevShare.toFixed(1),
+              pointDelta: pointDelta.toFixed(1),
+              currentAmount: row.total.toFixed(2),
+            },
+            metadata: { rule: 'category_creep', category: row.category, month: now.getMonth() },
+          });
+          break; // surface at most one creep insight per run
+        }
+      }
+    }
+
+    // Rule 6.75: Lifestyle inflation — discretionary spend baseline rose 20%+
+    // vs prior month. Catches "spending creep" across all discretionary buckets,
+    // not just one category.
+    const currDiscretionary = DISCRETIONARY_CATEGORIES.reduce(
+      (s, cat) => s + (currentSpend.find((r) => r.category === cat)?.total ?? 0),
+      0,
+    );
+    const prevDiscretionary = DISCRETIONARY_CATEGORIES.reduce(
+      (s, cat) => s + (previousSpend.find((r) => r.category === cat)?.total ?? 0),
+      0,
+    );
+    if (prevDiscretionary >= 100 && currDiscretionary > prevDiscretionary) {
+      const pct = ((currDiscretionary - prevDiscretionary) / prevDiscretionary) * 100;
+      if (pct >= LIFESTYLE_INFLATION_PERCENT_THRESHOLD) {
+        triggers.push({
+          type: InsightType.OVERSPENDING,
+          aiType: 'lifestyle_inflation',
+          data: {
+            current: currDiscretionary.toFixed(2),
+            previous: prevDiscretionary.toFixed(2),
+            percentChange: pct.toFixed(1),
+            delta: (currDiscretionary - prevDiscretionary).toFixed(2),
+          },
+          metadata: { rule: 'lifestyle_inflation', month: now.getMonth() },
+        });
+      }
+    }
+
+    // Rule 7: Income trend
     const incomeCurrentMonth = currentSpend.find((r) => r.category === TransactionCategory.INCOME)?.total ?? 0;
     const incomePrevMonth = previousSpend.find((r) => r.category === TransactionCategory.INCOME)?.total ?? 0;
     if (incomePrevMonth > 0 && incomeCurrentMonth > 0) {

@@ -20,6 +20,7 @@ import { AccountsModule } from './modules/accounts/accounts.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { InsightsModule } from './modules/insights/insights.module';
 import { OpportunitiesModule } from './modules/opportunities/opportunities.module';
+import { ForecastModule } from './modules/forecast/forecast.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { HealthModule } from './modules/health/health.module';
 import { BillingModule } from './modules/billing/billing.module';
@@ -104,6 +105,7 @@ import { rlsContext } from './common/rls/rls-context';
     TransactionsModule,
     InsightsModule,
     OpportunitiesModule,
+    ForecastModule,
     ChatModule,
     HealthModule,
     BillingModule,
