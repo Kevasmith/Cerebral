@@ -117,8 +117,13 @@ const useAuthStore = create((set, get) => ({
   },
 
   deleteAccount: async () => {
+    // Backend wipes both our app tables AND Better Auth's user/session/account
+    // rows in a single transaction. Once that returns, the session token in
+    // our possession is already invalid server-side — `authClient.signOut()`
+    // would throw trying to revoke a row that no longer exists, so we swallow
+    // that and force-clear local state ourselves.
     await api.delete('/users/me');
-    await authClient.signOut();
+    try { await authClient.signOut(); } catch {}
     await clearSession();
     set({ user: null, profile: null, preferences: null, isOnboarded: false, profileFetched: false });
   },

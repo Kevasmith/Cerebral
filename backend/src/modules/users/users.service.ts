@@ -4,7 +4,6 @@ import { DataSource, Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { Preference, UserGoal } from '../../entities/preference.entity';
 import { RegisterDto, UpdatePreferencesDto } from './dto/onboarding.dto';
-import { auth } from '../../auth/auth';
 
 @Injectable()
 export class UsersService {
@@ -85,11 +84,25 @@ export class UsersService {
   async deleteAccount(betterAuthId: string): Promise<void> {
     const user = await this.findByBetterAuthId(betterAuthId);
 
-    // Wipe all application data in one transaction, in FK-safe order:
-    //   transactions → accounts → (insights, preferences, subscriptions) → users
-    // Transactions are joined via accountId (no userId column), so we delete
-    // them by accountId subselect before clearing accounts.
+    // Wipe everything in a single transaction so we don't end up with a
+    // half-deleted user (auth tables gone but app data lingering, or vice
+    // versa). Order is FK-safe:
+    //
+    //   App tables:    transactions → accounts → (insights, preferences,
+    //                                              subscriptions) → users
+    //   Better Auth:   session → account → verification → "user"
+    //
+    // Better Auth manages its own tables ("user", "session", "account",
+    // "verification") via the shared Postgres pool we passed to betterAuth().
+    // We can't use auth.api.deleteUser because it's a session-scoped HTTP
+    // endpoint that requires `user.deleteUser.enabled: true` in the auth
+    // config (it isn't) and has a different body shape than our previous
+    // code assumed. Writing raw SQL is the simplest correct path — the
+    // table names are Better Auth defaults and we don't override them.
+    //
+    // "user" is quoted because it collides with the Postgres reserved word.
     await this.dataSource.transaction(async (em) => {
+      // ── App data ─────────────────────────────────────────────────────
       await em.query(
         `DELETE FROM transactions WHERE "accountId" IN (SELECT id FROM accounts WHERE "userId" = $1)`,
         [user.id],
@@ -99,17 +112,19 @@ export class UsersService {
       await em.query(`DELETE FROM preferences   WHERE "userId" = $1`, [user.id]);
       await em.query(`DELETE FROM subscriptions WHERE "userId" = $1`, [user.id]);
       await em.query(`DELETE FROM users         WHERE id        = $1`, [user.id]);
+
+      // ── Better Auth ──────────────────────────────────────────────────
+      // Wipe every session this user has anywhere (invalidates other devices
+      // too) before removing the auth user row.
+      await em.query(`DELETE FROM "session"      WHERE "userId" = $1`, [betterAuthId]);
+      await em.query(`DELETE FROM "account"      WHERE "userId" = $1`, [betterAuthId]);
+      // verification rows are keyed by identifier (email / phone), not userId.
+      if (user.email) {
+        await em.query(`DELETE FROM "verification" WHERE identifier = $1`, [user.email]);
+      }
+      await em.query(`DELETE FROM "user"         WHERE id = $1`, [betterAuthId]);
     });
 
-    // Remove from Better Auth — best-effort. App data is already wiped above,
-    // so a failure here just means the auth row sticks around (next login
-    // attempt would no-op our DB row creation; user can re-register fresh).
-    try {
-      await (auth.api as any).deleteUser({ body: { userId: betterAuthId } });
-    } catch (err) {
-      this.logger.warn(
-        `Better Auth deleteUser failed for ${betterAuthId}: ${(err as Error)?.message ?? err}`,
-      );
-    }
+    this.logger.log(`Deleted account ${betterAuthId} (app + auth)`);
   }
 }
