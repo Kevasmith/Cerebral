@@ -201,8 +201,11 @@ export default function Snapshot({ navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Pull-to-refresh also kicks the insights engine so any newly-eligible alerts
+  // (low-balance forecast, high-impact pick) fire and send a push.
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    await api.post('/insights/refresh').catch(() => null);
     await load();
     setRefreshing(false);
   }, [load]);
@@ -223,8 +226,15 @@ export default function Snapshot({ navigation }) {
           <CerebralAvatar />
           <Text style={[styles.brand, IS_WEB && { fontFamily: 'Geist' }]}>Cerebral</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.bellBtn}
+          activeOpacity={0.7}
+          onPress={() => navigation?.navigate?.('IntelligenceHub', { insights })}
+        >
           <Ionicons name="notifications-outline" size={22} color={C.text} />
+          {insights.length > 0 && (
+            <View style={styles.bellDot} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -338,7 +348,13 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brand:   { fontSize: 17, fontWeight: '800', color: C.text },
-  bellBtn: { padding: 4 },
+  bellBtn: { padding: 4, position: 'relative' },
+  bellDot: {
+    position: 'absolute', top: 4, right: 4,
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: C.red,
+    borderWidth: 1.5, borderColor: C.bg,
+  },
 
   // Net Worth Card
   networthCard: {

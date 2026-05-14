@@ -197,6 +197,15 @@ THIS MONTH AMOUNT: $${ctx.data.currentAmount}`,
 DISCRETIONARY SPEND THIS MONTH: $${ctx.data.current}
 DISCRETIONARY SPEND LAST MONTH: $${ctx.data.previous}
 DELTA: +$${ctx.data.delta} (+${ctx.data.percentChange}%)`,
+
+      low_balance_forecast: `TRIGGER: low_balance_forecast
+PROJECTED MONTH-END BALANCE: $${ctx.data.projectedLow}
+PROJECTED DATE: ${ctx.data.projectedDate}
+DAILY SPEND RATE: $${ctx.data.dailySpendRate}`,
+
+      high_impact_pick: `TRIGGER: high_impact_pick
+PICK: ${ctx.data.pickTitle}
+ESTIMATED ANNUAL RETURN: $${ctx.data.annualReturn}`,
     };
 
     const trigger =
@@ -339,6 +348,14 @@ Generate the weekly summary now.`;
       lifestyle_inflation: {
         title: `Discretionary spend up $${ctx.data.delta}`,
         body: `Your discretionary spending grew from $${ctx.data.previous} to $${ctx.data.current} this month — about ${ctx.data.percentChange}% higher. Cerebral is noting the new baseline.`,
+      },
+      low_balance_forecast: {
+        title: `Heads-up: month-end likely near $${ctx.data.projectedLow}`,
+        body: `At your current pace (~$${ctx.data.dailySpendRate}/day), Cerebral projects your balance lands near $${ctx.data.projectedLow} by ${ctx.data.projectedDate}. Worth a look if anything's coming up before then.`,
+      },
+      high_impact_pick: {
+        title: ctx.data.pickTitle,
+        body: `Cerebral spotted a move that could add about $${ctx.data.annualReturn}/yr. Open the Snapshot to review and decide.`,
       },
     };
 

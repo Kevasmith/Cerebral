@@ -11,6 +11,8 @@ import { AccountsModule } from '../accounts/accounts.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ForecastModule } from '../forecast/forecast.module';
+import { OpportunitiesModule } from '../opportunities/opportunities.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TransactionsModule,
     UsersModule,
     NotificationsModule,
+    ForecastModule,
+    OpportunitiesModule,
   ],
   controllers: [InsightsController],
   providers: [InsightsService, InsightEngineService],

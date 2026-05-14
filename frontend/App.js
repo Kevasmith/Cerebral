@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, View, Platform, StatusBar } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -30,6 +30,11 @@ import IntelligenceHub from './src/screens/IntelligenceHub';
 
 const WEB_MAX_WIDTH = 960;
 const IS_WEB = Platform.OS === 'web';
+
+// Navigation ref so the notification-response handler can route to a screen
+// from outside React (when the OS hands the app a tap before any screen has
+// mounted a navigation prop).
+const navRef = createNavigationContainerRef();
 
 // Wraps a screen in a centered max-width container on web only.
 // Defined at module level so the reference is stable — no remounts.
@@ -112,7 +117,13 @@ export default function App() {
     if (Platform.OS !== 'web') {
       const Notifications = require('expo-notifications');
       notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
-      responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {});
+      // Tap on a push (or local) notification → land the user on the
+      // Intelligence Hub so they see the alert that fired in context.
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {
+        if (navRef.isReady()) {
+          navRef.navigate('IntelligenceHub');
+        }
+      });
     }
 
     return () => {
@@ -151,7 +162,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" translucent={false} />
-      <NavigationContainer linking={linking}>
+      <NavigationContainer ref={navRef} linking={linking}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!user ? (
             <Stack.Screen name="SignIn" component={SignIn} />

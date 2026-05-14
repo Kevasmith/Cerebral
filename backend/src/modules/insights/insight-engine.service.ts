@@ -9,12 +9,16 @@ import { AccountsService } from '../accounts/accounts.service';
 import { AiService } from '../ai/ai.service';
 import { TransactionCategory } from '../../entities/transaction.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ForecastService } from '../forecast/forecast.service';
+import { OpportunitiesService } from '../opportunities/opportunities.service';
 
 const IDLE_CASH_THRESHOLD = 1000;
 const OVERSPEND_PERCENT_THRESHOLD = 10;
 const CATEGORY_OVERSPEND_THRESHOLD = 15;
 const CATEGORY_CREEP_POINT_THRESHOLD = 5;       // percentage points of total spend
 const LIFESTYLE_INFLATION_PERCENT_THRESHOLD = 20;
+const LOW_BALANCE_FORECAST_THRESHOLD = 500;     // dollars projected for month-end
+const HIGH_IMPACT_PICK_THRESHOLD = 50;          // estimated annual return ($) to alert
 
 // Discretionary categories used for lifestyle-inflation detection. Mirrors the
 // "discretionary" framing in the behavioural-pattern-recognition skill.
@@ -57,6 +61,8 @@ export class InsightEngineService {
     private readonly accountsService: AccountsService,
     private readonly ai: AiService,
     private readonly notifications: NotificationsService,
+    private readonly forecast: ForecastService,
+    private readonly opportunities: OpportunitiesService,
   ) {}
 
   async runForUser(userId: string): Promise<Insight[]> {
@@ -67,7 +73,7 @@ export class InsightEngineService {
     const userGoal = preference?.goal ?? UserGoal.SAVE_MORE;
     const userInterests = preference?.interests ?? [];
 
-    const triggers = await this.evaluateRules(userId);
+    const triggers = await this.evaluateRules(userId, userGoal);
     const newInsights: Insight[] = [];
 
     for (const trigger of triggers) {
@@ -115,7 +121,7 @@ export class InsightEngineService {
     return newInsights;
   }
 
-  private async evaluateRules(userId: string): Promise<RuleTrigger[]> {
+  private async evaluateRules(userId: string, userGoal: UserGoal): Promise<RuleTrigger[]> {
     const triggers: RuleTrigger[] = [];
     const now = new Date();
 
@@ -288,6 +294,60 @@ export class InsightEngineService {
           metadata: { rule: 'income_trend', month: now.getMonth() },
         });
       }
+    }
+
+    // Rule 8: Low-balance forecast — month-end projection dips below threshold.
+    // Mapped to InsightType.IDLE_CASH (cash-position warning family) so no DB
+    // migration is needed; aiType keeps this branch distinct in the prompt path.
+    try {
+      const forecast = await this.forecast.getBundle(userId, userGoal);
+      const cf = forecast.cashFlow;
+      if (
+        cf &&
+        (cf.confidence ?? 0) >= 0.5 &&
+        cf.projectedLow > 0 &&
+        cf.projectedLow < LOW_BALANCE_FORECAST_THRESHOLD &&
+        cf.dailySpendRate > 0
+      ) {
+        triggers.push({
+          type: InsightType.IDLE_CASH,
+          aiType: 'low_balance_forecast',
+          data: {
+            projectedLow: cf.projectedLow.toFixed(2),
+            projectedDate: cf.projectedLowDate,
+            dailySpendRate: cf.dailySpendRate.toFixed(2),
+          },
+          metadata: { rule: 'low_balance_forecast', month: now.getMonth() },
+        });
+      }
+    } catch (err) {
+      this.logger.warn(`Low-balance forecast rule failed: ${(err as Error)?.message ?? err}`);
+    }
+
+    // Rule 9: High-impact Cerebral Pick — surface a cash_optimization pick
+    // worth $50+/yr as an insight so the user gets a push, not just an
+    // in-app card on the Snapshot screen.
+    try {
+      const picks = await this.opportunities.getPicks(userId, userGoal);
+      const topCash = picks.find(
+        (p) =>
+          p.type === 'cash_optimization' &&
+          p.expectedImpact?.kind === 'annual_return' &&
+          (p.expectedImpact.value ?? 0) >= HIGH_IMPACT_PICK_THRESHOLD,
+      );
+      if (topCash) {
+        triggers.push({
+          type: InsightType.OPPORTUNITY,
+          aiType: 'high_impact_pick',
+          data: {
+            pickTitle: topCash.title,
+            annualReturn: (topCash.expectedImpact?.value ?? 0).toFixed(2),
+          },
+          metadata: { rule: 'high_impact_pick', pickId: topCash.id, month: now.getMonth() },
+        });
+      }
+    } catch (err) {
+      this.logger.warn(`High-impact pick rule failed: ${(err as Error)?.message ?? err}`);
     }
 
     return triggers;
