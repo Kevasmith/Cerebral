@@ -8,6 +8,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { IsString, MaxLength } from 'class-validator';
 import { UsersService } from './users.service';
@@ -29,6 +31,8 @@ class PushTokenDto {
 @Controller('users')
 @UseGuards(BetterAuthGuard)
 export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
+
   constructor(private readonly usersService: UsersService) {}
 
   @Post('register')
@@ -97,7 +101,15 @@ export class UsersController {
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAccount(@CurrentUser() user: { id: string }) {
-    await this.usersService.deleteAccount(user.id);
+    try {
+      await this.usersService.deleteAccount(user.id);
+    } catch (err) {
+      // Log the full error so Railway shows what actually broke; surface a
+      // useful message to the client instead of a bare "Internal Server Error".
+      const message = (err as Error)?.message ?? 'unknown error';
+      this.logger.error(`deleteAccount failed for ${user.id}: ${message}`, (err as Error)?.stack);
+      throw new InternalServerErrorException(`Could not delete account: ${message}`);
+    }
     posthog.capture({ distinctId: user.id, event: 'account_deleted' });
   }
 

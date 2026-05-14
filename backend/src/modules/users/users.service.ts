@@ -84,25 +84,12 @@ export class UsersService {
   async deleteAccount(betterAuthId: string): Promise<void> {
     const user = await this.findByBetterAuthId(betterAuthId);
 
-    // Wipe everything in a single transaction so we don't end up with a
-    // half-deleted user (auth tables gone but app data lingering, or vice
-    // versa). Order is FK-safe:
-    //
-    //   App tables:    transactions → accounts → (insights, preferences,
-    //                                              subscriptions) → users
-    //   Better Auth:   session → account → verification → "user"
-    //
-    // Better Auth manages its own tables ("user", "session", "account",
-    // "verification") via the shared Postgres pool we passed to betterAuth().
-    // We can't use auth.api.deleteUser because it's a session-scoped HTTP
-    // endpoint that requires `user.deleteUser.enabled: true` in the auth
-    // config (it isn't) and has a different body shape than our previous
-    // code assumed. Writing raw SQL is the simplest correct path — the
-    // table names are Better Auth defaults and we don't override them.
-    //
-    // "user" is quoted because it collides with the Postgres reserved word.
+    // Step 1: atomically wipe our application data. This MUST succeed or
+    // throw — leaving accounts/transactions/insights behind is the worst
+    // failure mode. Order is FK-safe:
+    //   transactions → accounts → (insights, preferences, subscriptions)
+    //                            → users
     await this.dataSource.transaction(async (em) => {
-      // ── App data ─────────────────────────────────────────────────────
       await em.query(
         `DELETE FROM transactions WHERE "accountId" IN (SELECT id FROM accounts WHERE "userId" = $1)`,
         [user.id],
@@ -112,19 +99,51 @@ export class UsersService {
       await em.query(`DELETE FROM preferences   WHERE "userId" = $1`, [user.id]);
       await em.query(`DELETE FROM subscriptions WHERE "userId" = $1`, [user.id]);
       await em.query(`DELETE FROM users         WHERE id        = $1`, [user.id]);
-
-      // ── Better Auth ──────────────────────────────────────────────────
-      // Wipe every session this user has anywhere (invalidates other devices
-      // too) before removing the auth user row.
-      await em.query(`DELETE FROM "session"      WHERE "userId" = $1`, [betterAuthId]);
-      await em.query(`DELETE FROM "account"      WHERE "userId" = $1`, [betterAuthId]);
-      // verification rows are keyed by identifier (email / phone), not userId.
-      if (user.email) {
-        await em.query(`DELETE FROM "verification" WHERE identifier = $1`, [user.email]);
-      }
-      await em.query(`DELETE FROM "user"         WHERE id = $1`, [betterAuthId]);
     });
 
-    this.logger.log(`Deleted account ${betterAuthId} (app + auth)`);
+    // Step 2: best-effort cleanup of Better Auth + plugin tables. Each
+    // statement runs in its own try/catch — a missing table (some plugins
+    // are conditional), an FK violation, or a row that was never created
+    // shouldn't abort the rest. The critical pair is `session` + `account`:
+    // wiping those alone makes it impossible for the user to log back in
+    // even if the `"user"` row stickily survives.
+    //
+    // Order matters when it succeeds:
+    //   org plugin (member, teamMember, invitation) → account → session
+    //   → verification → "user"
+    //
+    // Table names are Better Auth defaults (confirmed against
+    // @better-auth/core/dist/db/get-tables.mjs). "user" is quoted because
+    // it collides with the Postgres reserved word.
+    const authCleanups: Array<{ label: string; sql: string; params: unknown[] }> = [
+      { label: 'org.member',      sql: `DELETE FROM "member"       WHERE "userId" = $1`, params: [betterAuthId] },
+      { label: 'org.teamMember',  sql: `DELETE FROM "teamMember"   WHERE "userId" = $1`, params: [betterAuthId] },
+      { label: 'org.invitation',  sql: `DELETE FROM "invitation"   WHERE "inviterId" = $1`, params: [betterAuthId] },
+      { label: 'session',         sql: `DELETE FROM "session"      WHERE "userId" = $1`, params: [betterAuthId] },
+      { label: 'account',         sql: `DELETE FROM "account"      WHERE "userId" = $1`, params: [betterAuthId] },
+    ];
+    if (user.email) {
+      authCleanups.push({
+        label: 'verification',
+        sql: `DELETE FROM "verification" WHERE identifier = $1`,
+        params: [user.email],
+      });
+    }
+    authCleanups.push({ label: 'user', sql: `DELETE FROM "user" WHERE id = $1`, params: [betterAuthId] });
+
+    for (const step of authCleanups) {
+      try {
+        await this.dataSource.query(step.sql, step.params);
+      } catch (err) {
+        // Common reasons we don't want to abort:
+        //   42P01 "relation does not exist" — plugin table not created on this env
+        //   23503 foreign_key_violation     — a row we don't know about references the user
+        this.logger.warn(
+          `Better Auth cleanup [${step.label}] skipped: ${(err as Error)?.message ?? err}`,
+        );
+      }
+    }
+
+    this.logger.log(`Deleted account ${betterAuthId} (app data wiped; auth best-effort)`);
   }
 }
