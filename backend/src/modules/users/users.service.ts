@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
@@ -8,6 +8,8 @@ import { auth } from '../../auth/auth';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
@@ -83,21 +85,31 @@ export class UsersService {
   async deleteAccount(betterAuthId: string): Promise<void> {
     const user = await this.findByBetterAuthId(betterAuthId);
 
-    // Delete all application data in one transaction
+    // Wipe all application data in one transaction, in FK-safe order:
+    //   transactions → accounts → (insights, preferences, subscriptions) → users
+    // Transactions are joined via accountId (no userId column), so we delete
+    // them by accountId subselect before clearing accounts.
     await this.dataSource.transaction(async (em) => {
-      await em.query(`DELETE FROM insights     WHERE "userId" = $1`, [user.id]);
-      await em.query(`DELETE FROM opportunities WHERE "userId" = $1`, [user.id]);
-      await em.query(`DELETE FROM transactions  WHERE "userId" = $1`, [user.id]);
+      await em.query(
+        `DELETE FROM transactions WHERE "accountId" IN (SELECT id FROM accounts WHERE "userId" = $1)`,
+        [user.id],
+      );
       await em.query(`DELETE FROM accounts      WHERE "userId" = $1`, [user.id]);
+      await em.query(`DELETE FROM insights      WHERE "userId" = $1`, [user.id]);
       await em.query(`DELETE FROM preferences   WHERE "userId" = $1`, [user.id]);
+      await em.query(`DELETE FROM subscriptions WHERE "userId" = $1`, [user.id]);
       await em.query(`DELETE FROM users         WHERE id        = $1`, [user.id]);
     });
 
-    // Remove from Better Auth — best-effort (auth tables cleaned via db cascade too)
+    // Remove from Better Auth — best-effort. App data is already wiped above,
+    // so a failure here just means the auth row sticks around (next login
+    // attempt would no-op our DB row creation; user can re-register fresh).
     try {
       await (auth.api as any).deleteUser({ body: { userId: betterAuthId } });
-    } catch {
-      // Better Auth user removal is best-effort; app data already wiped above
+    } catch (err) {
+      this.logger.warn(
+        `Better Auth deleteUser failed for ${betterAuthId}: ${(err as Error)?.message ?? err}`,
+      );
     }
   }
 }

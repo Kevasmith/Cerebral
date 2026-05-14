@@ -133,7 +133,24 @@ export default function Settings({ navigation }) {
       'Delete Forever',
       async () => {
         setDeletingAccount(true);
-        try { await deleteAccount(); } finally { setDeletingAccount(false); }
+        try {
+          await deleteAccount();
+          // On success the auth store resets user/profile/preferences which
+          // triggers App.js to switch back to the Welcome stack — no manual
+          // navigation needed here.
+        } catch (err) {
+          const message =
+            err?.response?.data?.message ||
+            err?.message ||
+            'Could not delete your account. Please try again or contact support.';
+          if (Platform.OS === 'web') {
+            window.alert(`Delete failed\n\n${message}`);
+          } else {
+            Alert.alert('Delete failed', message);
+          }
+        } finally {
+          setDeletingAccount(false);
+        }
       },
     );
   };
