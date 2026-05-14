@@ -13,6 +13,7 @@ import { registerForPushNotifications } from './src/utils/notifications';
 import WebTopNav from './src/components/WebTopNav';
 
 import SignIn from './src/screens/SignIn';
+import Welcome from './src/screens/Welcome';
 import Onboarding from './src/screens/Onboarding';
 import Dashboard from './src/screens/Dashboard';
 import Transactions from './src/screens/Transactions';
@@ -140,13 +141,20 @@ export default function App() {
     }
   }, [user]);
 
+  // Auto-register only if the user previously granted permission. New users
+  // see the in-app NotificationsSheet on first Snapshot visit, which fires the
+  // OS prompt explicitly when they tap "Enable".
   useEffect(() => {
-    if (!user) return;
-    registerForPushNotifications()
-      .then((token) => {
+    if (!user || Platform.OS === 'web') return;
+    (async () => {
+      try {
+        const Notifications = require('expo-notifications');
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') return;
+        const token = await registerForPushNotifications();
         if (token) api.patch('/users/me/push-token', { expoPushToken: token }).catch(() => {});
-      })
-      .catch(() => {});
+      } catch {}
+    })();
   }, [user]);
 
   // Hold the loading screen until we know the user AND their onboarding state.
@@ -165,7 +173,10 @@ export default function App() {
       <NavigationContainer ref={navRef} linking={linking}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!user ? (
-            <Stack.Screen name="SignIn" component={SignIn} />
+            <>
+              <Stack.Screen name="Welcome" component={Welcome} />
+              <Stack.Screen name="SignIn" component={SignIn} options={{ animation: 'slide_from_right' }} />
+            </>
           ) : !isOnboarded ? (
             <Stack.Screen name="Onboarding" component={Onboarding} />
           ) : (

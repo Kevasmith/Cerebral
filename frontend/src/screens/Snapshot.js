@@ -3,14 +3,21 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   RefreshControl, Platform, Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
 import TrendLine from '../components/TrendLine';
+import WelcomeSheet from '../components/WelcomeSheet';
+import NotificationsSheet from '../components/NotificationsSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
+import { registerForPushNotifications } from '../utils/notifications';
 import { C, SHADOW } from '../constants/theme';
+
+const WELCOME_SHOWN_KEY  = 'cerebral.welcomeSheetShown.v1';
+const NOTIF_ASKED_KEY    = 'cerebral.notificationsAskedInApp.v1';
 
 // Returns a time-of-day greeting in the user's local time.
 function timeGreeting(now = new Date()) {
@@ -195,6 +202,48 @@ export default function Snapshot({ navigation }) {
   const [picks,      setPicks]      = useState([]);
   const [forecast,   setForecast]   = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [welcomeOpen,      setWelcomeOpen]      = useState(false);
+  const [notifSheetOpen,   setNotifSheetOpen]   = useState(false);
+
+  // First-visit flow: show celebration sheet, then on dismiss surface the
+  // notifications opt-in sheet (only on native; only if not already asked).
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    (async () => {
+      try {
+        const shown = await AsyncStorage.getItem(WELCOME_SHOWN_KEY);
+        if (!shown) setWelcomeOpen(true);
+      } catch {}
+    })();
+  }, []);
+
+  const dismissWelcome = useCallback(async () => {
+    setWelcomeOpen(false);
+    try { await AsyncStorage.setItem(WELCOME_SHOWN_KEY, '1'); } catch {}
+    if (Platform.OS === 'web') return;
+    try {
+      const asked = await AsyncStorage.getItem(NOTIF_ASKED_KEY);
+      if (asked) return;
+      const Notifications = require('expo-notifications');
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === 'granted') return; // already opted in elsewhere — nothing to do
+      setNotifSheetOpen(true);
+    } catch {}
+  }, []);
+
+  const enableNotifs = useCallback(async () => {
+    setNotifSheetOpen(false);
+    try { await AsyncStorage.setItem(NOTIF_ASKED_KEY, '1'); } catch {}
+    try {
+      const token = await registerForPushNotifications();
+      if (token) await api.patch('/users/me/push-token', { expoPushToken: token });
+    } catch {}
+  }, []);
+
+  const skipNotifs = useCallback(async () => {
+    setNotifSheetOpen(false);
+    try { await AsyncStorage.setItem(NOTIF_ASKED_KEY, '1'); } catch {}
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -358,6 +407,8 @@ export default function Snapshot({ navigation }) {
         </View>
       </ScrollView>
       <ChatSheet visible={chatOpen} onClose={() => setChatOpen(false)} screenKey="snapshot" />
+      <WelcomeSheet visible={welcomeOpen} name={profile?.displayName} onDismiss={dismissWelcome} />
+      <NotificationsSheet visible={notifSheetOpen} onEnable={enableNotifs} onSkip={skipNotifs} />
     </View>
   );
 }
