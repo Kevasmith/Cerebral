@@ -281,7 +281,7 @@ function GoalStep({ onNext }) {
         <Text style={s.brandAccent}>Intelligence</Text>
         <Text style={s.brandDesc}>Setting the foundation for your cognitive wealth strategy.</Text>
 
-        <StepProgress step={1} total={2} label="GOALS" />
+        <StepProgress step={1} total={3} label="GOALS" />
 
         {/* Goals card */}
         <View style={s.goalCard}>
@@ -395,9 +395,8 @@ const PLANS = {
   },
 };
 
-// ─── Step 2 of 2: Plan Creation ───────────────────────────────────────────────
-function PlanCreationStep({ goal, onBack }) {
-  const { savePreferences } = useAuthStore();
+// ─── Step 2 of 3: Plan Creation ───────────────────────────────────────────────
+function PlanCreationStep({ goal, onActivate, onBack }) {
   const insets = useSafeAreaInsets();
   const label  = GOAL_LABELS[goal] ?? 'Your Goal';
 
@@ -449,13 +448,14 @@ function PlanCreationStep({ goal, onBack }) {
         <View style={s.planProgressRow}>
           <View style={s.planProgressLeft}>
             <Ionicons name="radio-button-on" size={16} color={TEAL} />
-            <Text style={s.stepProgressLabel}>STEP 2 OF 2: PLAN CREATION</Text>
+            <Text style={s.stepProgressLabel}>STEP 2 OF 3: PLAN CREATION</Text>
           </View>
-          <Text style={s.planProgressPct}>100% complete</Text>
+          <Text style={s.planProgressPct}>66% complete</Text>
         </View>
         <View style={s.progressBar}>
           <View style={[s.progressSeg, s.progressSegFilled]} />
           <View style={[s.progressSeg, s.progressSegFilled]} />
+          <View style={s.progressSeg} />
         </View>
 
         {/* Heading */}
@@ -546,7 +546,7 @@ function PlanCreationStep({ goal, onBack }) {
       <View style={[s.activateBar, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity
           style={s.activateBtn}
-          onPress={() => savePreferences({ goal, interests: ['investing'] })}
+          onPress={onActivate}
           activeOpacity={0.85}
         >
           <Text style={s.activateBtnText}>Activate Strategy</Text>
@@ -556,14 +556,177 @@ function PlanCreationStep({ goal, onBack }) {
   );
 }
 
+// ─── Plan tiers ──────────────────────────────────────────────────────────────
+// Mirrors the existing billingStore plan keys so the picker can update store
+// state without translation. `free` is the entry tier; paid tiers can be
+// activated immediately from Settings (or via Upgrade flow).
+const PLAN_TIERS = [
+  {
+    key: 'free',
+    name: 'Free',
+    price: '$0',
+    cadence: '/mo',
+    tagline: 'Start aware. Upgrade anytime.',
+    features: [
+      'Connect one bank account',
+      'Monthly insights & spending breakdown',
+      'Cerebral Picks (basic)',
+    ],
+  },
+  {
+    key: 'growth',
+    name: 'Growth',
+    price: '$9',
+    cadence: '/mo',
+    tagline: 'For the financially aware.',
+    features: [
+      'Unlimited connected accounts',
+      'Cerebral AI assistant',
+      'Advanced patterns + low-balance forecasts',
+      'Priority alerts & notifications',
+    ],
+    recommended: true,
+  },
+  {
+    key: 'pro',
+    name: 'Pro',
+    price: '$19',
+    cadence: '/mo',
+    tagline: 'For the financially ambitious.',
+    features: [
+      'Everything in Growth',
+      'Predictive cash flow + goal forecasts',
+      'Tax-aware suggestions',
+      'Priority human support',
+    ],
+  },
+];
+
+// ─── Step 3 of 3: Plan Picker ────────────────────────────────────────────────
+function PlanPickerStep({ goal, onComplete }) {
+  const insets = useSafeAreaInsets();
+  const [selected, setSelected] = useState('growth');
+
+  return (
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <View style={[s.planNav, { paddingTop: insets.top + 10 }]}>
+        <View style={{ width: 40 }} />
+        <Text style={s.planNavTitle}>Cerebral</Text>
+        <View style={s.planNavBadge}>
+          <Text style={s.planNavBadgeText}>ONBOARDING</Text>
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[s.planContent, { paddingBottom: 140 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={s.planProgressRow}>
+          <View style={s.planProgressLeft}>
+            <Ionicons name="radio-button-on" size={16} color={TEAL} />
+            <Text style={s.stepProgressLabel}>STEP 3 OF 3: PLAN</Text>
+          </View>
+          <Text style={s.planProgressPct}>100% complete</Text>
+        </View>
+        <View style={s.progressBar}>
+          <View style={[s.progressSeg, s.progressSegFilled]} />
+          <View style={[s.progressSeg, s.progressSegFilled]} />
+          <View style={[s.progressSeg, s.progressSegFilled]} />
+        </View>
+
+        <Text style={s.planHeading}>Pick your plan</Text>
+        <Text style={s.planSubheading}>
+          Start free — you can upgrade or downgrade anytime in Settings.
+        </Text>
+
+        <View style={{ gap: 12 }}>
+          {PLAN_TIERS.map((tier) => {
+            const active = selected === tier.key;
+            return (
+              <TouchableOpacity
+                key={tier.key}
+                style={[tierStyles.card, active && tierStyles.cardActive]}
+                onPress={() => setSelected(tier.key)}
+                activeOpacity={0.85}
+              >
+                <View style={tierStyles.cardTop}>
+                  <View style={{ flex: 1 }}>
+                    <View style={tierStyles.nameRow}>
+                      <Text style={tierStyles.name}>{tier.name}</Text>
+                      {tier.recommended && (
+                        <View style={tierStyles.recommendedBadge}>
+                          <Text style={tierStyles.recommendedText}>RECOMMENDED</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={tierStyles.tagline}>{tier.tagline}</Text>
+                  </View>
+                  <View style={tierStyles.priceWrap}>
+                    <Text style={tierStyles.price}>{tier.price}</Text>
+                    <Text style={tierStyles.cadence}>{tier.cadence}</Text>
+                  </View>
+                </View>
+
+                <View style={tierStyles.featureList}>
+                  {tier.features.map((f) => (
+                    <View key={f} style={tierStyles.featureRow}>
+                      <Ionicons name="checkmark-circle" size={14} color={active ? TEAL : TEXT_DIM} />
+                      <Text style={tierStyles.featureText}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {active && (
+                  <View style={tierStyles.activeMark}>
+                    <Ionicons name="checkmark-circle" size={22} color={TEAL} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={tierStyles.fineprint}>
+          Paid tiers can be activated from Settings. Cerebral never charges your card without your explicit confirmation.
+        </Text>
+      </ScrollView>
+
+      <View style={[s.activateBar, { paddingBottom: insets.bottom + 20 }]}>
+        <TouchableOpacity
+          style={s.activateBtn}
+          onPress={() => onComplete(selected)}
+          activeOpacity={0.85}
+        >
+          <Text style={s.activateBtnText}>
+            {selected === 'free' ? 'Continue with Free' : `Continue — upgrade later`}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 // ─── Root Onboarding ──────────────────────────────────────────────────────────
-export default function Onboarding() {
+export default function Onboarding({ navigation }) {
+  const { savePreferences } = useAuthStore();
   const [step, setStep] = useState(IS_WEB ? 1 : 0);
   const [goal, setGoal] = useState(null);
 
+  const finish = (tier) => {
+    // Persist goal + interests. Picked tier is recorded locally for the demo;
+    // real billing activation happens via Settings → Upgrade flow.
+    savePreferences({ goal, interests: ['investing'] });
+    if (tier && tier !== 'free') {
+      // Land the user on the Upgrade screen so they can complete payment if
+      // they want — they're still onboarded either way.
+      setTimeout(() => navigation?.navigate?.('Upgrade'), 250);
+    }
+  };
+
   if (step === 0) return <ConnectBankStep onConnected={() => setStep(1)} onSkip={() => setStep(1)} />;
   if (step === 1) return <GoalStep onNext={(g) => { setGoal(g); setStep(2); }} />;
-  return <PlanCreationStep goal={goal} onBack={() => setStep(1)} />;
+  if (step === 2) return <PlanCreationStep goal={goal} onActivate={() => setStep(3)} onBack={() => setStep(1)} />;
+  return <PlanPickerStep goal={goal} onComplete={finish} />;
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -746,4 +909,38 @@ const s = StyleSheet.create({
     shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   activateBtnText: { fontSize: 16, fontWeight: '700', color: PILL_FG, letterSpacing: -0.2 },
+});
+
+// ─── Plan picker styles ──────────────────────────────────────────────────────
+const tierStyles = StyleSheet.create({
+  card: {
+    backgroundColor: CARD,
+    borderRadius: 18, padding: 18,
+    borderWidth: 1.5, borderColor: BORDER,
+    position: 'relative',
+  },
+  cardActive: {
+    borderColor: TEAL,
+    backgroundColor: TEAL_DIM,
+  },
+  cardTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  nameRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  name:       { fontSize: 18, fontWeight: '800', color: TEXT, letterSpacing: -0.3 },
+  tagline:    { fontSize: 13, color: TEXT_DIM, lineHeight: 19 },
+  recommendedBadge: {
+    backgroundColor: TEAL, borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 3,
+  },
+  recommendedText: { fontSize: 9, fontWeight: '800', color: BG, letterSpacing: 1 },
+  priceWrap:  { flexDirection: 'row', alignItems: 'baseline', gap: 2, marginLeft: 12 },
+  price:      { fontSize: 22, fontWeight: '900', color: TEXT, letterSpacing: -0.5 },
+  cadence:    { fontSize: 13, color: TEXT_DIM, fontWeight: '600' },
+
+  featureList:{ gap: 8 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  featureText:{ fontSize: 13, color: TEXT, flex: 1 },
+
+  activeMark: { position: 'absolute', top: 14, right: 14 },
+
+  fineprint:  { fontSize: 11, color: TEXT_DIM, lineHeight: 16, marginTop: 18, fontStyle: 'italic' },
 });
