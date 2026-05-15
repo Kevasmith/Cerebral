@@ -14,6 +14,7 @@ import WebTopNav from './src/components/WebTopNav';
 
 import SignIn from './src/screens/SignIn';
 import Welcome from './src/screens/Welcome';
+import Aha from './src/screens/Aha';
 import Onboarding from './src/screens/Onboarding';
 import Dashboard from './src/screens/Dashboard';
 import Transactions from './src/screens/Transactions';
@@ -175,7 +176,8 @@ export default function App() {
           {!user ? (
             <>
               <Stack.Screen name="Welcome" component={Welcome} />
-              <Stack.Screen name="SignIn" component={SignIn} options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="Aha"     component={Aha}     options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="SignIn"  component={SignIn}  options={{ animation: 'slide_from_right' }} />
             </>
           ) : !isOnboarded ? (
             <Stack.Screen name="Onboarding" component={Onboarding} />

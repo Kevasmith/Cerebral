@@ -4,10 +4,21 @@ import {
   ScrollView, ActivityIndicator, SafeAreaView,
   Platform, TextInput,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import useAuthStore from '../store/authStore';
+
+// Map the persona-aware "focus" answer from the pre-auth Aha flow to the
+// most natural starting goal in this screen. The user can still override.
+const AHA_PROFILE_KEY = 'cerebral.aha_profile';
+const FOCUS_TO_GOAL = {
+  saving:    'save_for_house',
+  debt:      'custom',
+  awareness: 'custom',
+  wealth:    'retire_early',
+};
 
 const IS_WEB = Platform.OS === 'web';
 const WebView = Platform.OS !== 'web' ? require('react-native-webview').WebView : null;
@@ -261,6 +272,22 @@ function GoalStep({ onNext }) {
   const [selected,    setSelected]    = useState([]);
   const [customText,  setCustomText]  = useState('');
   const insets = useSafeAreaInsets();
+
+  // Pre-select the goal that matches the user's pre-auth "focus" answer.
+  // Runs once when the step mounts; the user can still toggle.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(AHA_PROFILE_KEY);
+        if (!raw || cancelled) return;
+        const profile = JSON.parse(raw);
+        const goalKey = FOCUS_TO_GOAL[profile?.focus];
+        if (goalKey && !cancelled) setSelected([goalKey]);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const toggle = (key) =>
     setSelected((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
