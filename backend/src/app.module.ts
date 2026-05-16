@@ -92,9 +92,13 @@ import { rlsContext } from './common/rls/rls-context';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const r = config.get('redis') as any;
-        const redisUrl = r?.url || process.env.REDIS_URL || `redis://${config.get('redis.host')}:${config.get('redis.port')}`;
+        const redisUrl = r?.url || process.env.REDIS_URL;
+        // Only register the Redis store when a URL is actually configured.
+        // Falling through to `redis://localhost:6379` in Railway containers
+        // produces a constant stream of ECONNREFUSED reconnect attempts.
+        // In-memory cache (the default) is fine for a single-instance deploy.
         return {
-          stores: [createKeyv(redisUrl)],
+          stores: redisUrl ? [createKeyv(redisUrl)] : [],
           ttl: config.get<number>('redis.ttl'),
         };
       },

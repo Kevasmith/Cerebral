@@ -19,17 +19,22 @@ export class HealthService {
     }
   }
 
-  async checkRedis(): Promise<{ ok: boolean; error?: string }> {
+  // Returns `configured: false` when there's no REDIS_URL — caller treats this
+  // as "skip" rather than a hard failure. Redis is a cache, not critical.
+  async checkRedis(): Promise<{ ok: boolean; configured: boolean; error?: string }> {
+    const r = this.config.get('redis') as any;
+    const redisUrl = r?.url || process.env.REDIS_URL;
+    if (!redisUrl) {
+      return { ok: false, configured: false };
+    }
     try {
-      const r = this.config.get('redis') as any;
-      const redisUrl = r?.url || process.env.REDIS_URL || `redis://${r?.host ?? 'localhost'}:${r?.port ?? 6379}`;
       const kv = createKeyv(redisUrl);
       await kv.set('__health_check__', '1', 5);
       const v = await kv.get('__health_check__');
-      return { ok: v === '1' || v === 1 };
+      return { ok: v === '1' || v === 1, configured: true };
     } catch (err) {
       this.logger.warn('Redis health check failed', err?.message || err);
-      return { ok: false, error: String(err?.message || err) };
+      return { ok: false, configured: true, error: String(err?.message || err) };
     }
   }
 }
