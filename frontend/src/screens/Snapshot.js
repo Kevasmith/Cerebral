@@ -327,16 +327,6 @@ export default function Snapshot({ navigation }) {
         {/* Net Worth */}
         <NetWorthCard netWorth={netWorth} change={changeValue} forecast={forecast} />
 
-        {/* Manage Assets — black pill */}
-        <TouchableOpacity
-          style={styles.manageBtn}
-          onPress={() => navigation?.navigate?.('ConnectBank')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="wallet-outline" size={17} color={C.textInvert} />
-          <Text style={[styles.manageBtnText, IS_WEB && { fontFamily: 'Geist' }]}>Manage Assets</Text>
-        </TouchableOpacity>
-
         {/* Pulse Check + Cerebral Insights — combined card */}
         <View style={styles.aiSection}>
           {/* Pulse header */}
@@ -470,16 +460,6 @@ const styles = StyleSheet.create({
   // Forecast subtitle — calm, low-emphasis "likely month-end" line.
   forecastRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
   forecastText: { fontSize: 12, color: C.soft, flexShrink: 1 },
-
-  // Manage Assets — black pill
-  manageBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: C.surfaceDeep,
-    borderRadius: 999, paddingVertical: 16,
-    marginBottom: 18,
-    ...SHADOW,
-  },
-  manageBtnText: { fontSize: 15, fontWeight: '700', color: C.textInvert },
 
   // Combined AI section (Pulse + Insights + Hub button)
   aiSection: {
