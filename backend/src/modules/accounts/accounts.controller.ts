@@ -2,7 +2,11 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
+  Param,
   Post,
   Query,
   UseGuards,
@@ -52,6 +56,33 @@ export class AccountsController {
   async getUserAccounts(@CurrentUser() user: { id: string }) {
     const profile = await this.usersService.findByBetterAuthId(user.id);
     return this.accountsService.findAllByUser(profile.id);
+  }
+
+  // Disconnect a single institution — wipes the user's accounts under that
+  // institution name plus every transaction tied to those accounts. Frontend
+  // calls this from the swipe-to-disconnect action on the Accounts screen.
+  @Delete('institution/:institutionName')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async disconnectInstitution(
+    @CurrentUser() user: { id: string },
+    @Param('institutionName') institutionName: string,
+  ) {
+    if (!institutionName?.trim()) {
+      throw new BadRequestException('institutionName is required');
+    }
+    const profile = await this.usersService.findByBetterAuthId(user.id);
+    const result = await this.accountsService.disconnectInstitution(
+      profile.id,
+      institutionName.trim(),
+    );
+    posthog.capture({
+      distinctId: user.id,
+      event: 'institution_disconnected',
+      properties: {
+        institution_name: institutionName.trim(),
+        accounts_removed: result.accountsRemoved,
+      },
+    });
   }
 
   @Get('dashboard')

@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Platform, ActivityIndicator, RefreshControl,
+  TextInput, Platform, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
@@ -11,48 +12,101 @@ import ChatSheet from '../components/ChatSheet';
 import CerebralAvatar from '../components/CerebralAvatar';
 import { C, SHADOW, SHADOW_SOFT } from '../constants/theme';
 import { BANKS } from '../constants/banks';
-import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPE_ICON } from '../constants/account-types';
-import { fmtBalance, timeSince, bankColor, bankInitial } from '../utils/format';
+import { timeSince, bankColor, bankInitial } from '../utils/format';
 import { openPlaidLink } from '../utils/plaidLink';
 
 const IS_WEB = Platform.OS === 'web';
 
-// ─── Active account row ───────────────────────────────────────────────────────
-function AccountRow({ account }) {
-  const typeKey = account.accountType ?? 'checking';
-  const typeLabel = ACCOUNT_TYPE_LABEL[typeKey] ?? typeKey;
-  const typeIcon = ACCOUNT_TYPE_ICON[typeKey] ?? 'card-outline';
-  const initials = bankInitial(account.institutionName);
-  const color = bankColor(account.institutionName);
-  const syncedLabel = timeSince(account.lastSyncedAt);
+// Roll up per-account rows into one entry per institution. We intentionally
+// don't surface account names or balances here — the institution-level view
+// is the privacy-friendly default (Plaid's my.plaid.com follows the same
+// pattern). Drill-down with balances can be a separate, opt-in surface
+// later if needed.
+function groupByInstitution(accounts) {
+  const map = new Map();
+  for (const a of accounts ?? []) {
+    const key = a.institutionName ?? 'Bank';
+    const entry = map.get(key) ?? { institutionName: key, count: 0, lastSyncedAt: null };
+    entry.count += 1;
+    const t = a.lastSyncedAt ? new Date(a.lastSyncedAt).getTime() : 0;
+    const cur = entry.lastSyncedAt ? new Date(entry.lastSyncedAt).getTime() : 0;
+    if (t > cur) entry.lastSyncedAt = a.lastSyncedAt;
+    map.set(key, entry);
+  }
+  return Array.from(map.values());
+}
+
+// ─── Connected institution row ────────────────────────────────────────────────
+// Minimal: logo, institution name, sync state, chevron. No balances.
+// Wrapped in Swipeable — swipe left to reveal a red "Disconnect" action that
+// confirms then calls the disconnect handler (which hits the backend and
+// refreshes the list).
+function InstitutionRow({ institution, onDisconnect }) {
+  const initials = bankInitial(institution.institutionName);
+  const color = bankColor(institution.institutionName);
+  const syncedLabel = timeSince(institution.lastSyncedAt);
+  const countLabel =
+    institution.count === 1 ? '1 account connected' : `${institution.count} accounts connected`;
+
+  const swipeRef = useRef(null);
+
+  const confirmDisconnect = () => {
+    const close = () => swipeRef.current?.close?.();
+    const proceed = () => {
+      close();
+      onDisconnect?.(institution.institutionName);
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(
+        `Disconnect ${institution.institutionName}?\n\nCerebral will stop syncing these accounts and remove their data.`
+      )) proceed();
+      else close();
+    } else {
+      Alert.alert(
+        `Disconnect ${institution.institutionName}?`,
+        'Cerebral will stop syncing these accounts and remove their data.',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: close },
+          { text: 'Disconnect', style: 'destructive', onPress: proceed },
+        ],
+      );
+    }
+  };
+
+  const renderRightActions = () => (
+    <TouchableOpacity
+      style={styles.swipeDisconnect}
+      activeOpacity={0.85}
+      onPress={confirmDisconnect}
+    >
+      <Ionicons name="unlink-outline" size={18} color={C.textInvert} />
+      <Text style={styles.swipeDisconnectText}>Disconnect</Text>
+    </TouchableOpacity>
+  );
 
   return (
-    <View style={styles.accountRow}>
-      <View style={[styles.accountLogo, { backgroundColor: color }]}>
-        <Text style={styles.accountLogoText}>{initials}</Text>
-      </View>
-      <View style={styles.accountMeta}>
-        <Text style={[styles.accountName, IS_WEB && { fontFamily: 'Geist' }]}>
-          {account.institutionName ?? 'Bank'}
-        </Text>
-        <View style={styles.accountSubRow}>
-          <Ionicons name={typeIcon} size={11} color={C.muted} />
-          <Text style={styles.accountSub}>{typeLabel}</Text>
-          {account.accountName ? (
-            <Text style={styles.accountSub}> · {account.accountName}</Text>
-          ) : null}
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+    >
+      <View style={styles.institutionRow}>
+        <View style={[styles.institutionLogo, { backgroundColor: color }]}>
+          <Text style={styles.institutionLogoText}>{initials}</Text>
         </View>
-      </View>
-      <View style={styles.accountRight}>
-        <Text style={[styles.accountBalance, IS_WEB && { fontFamily: 'Geist' }]}>
-          {fmtBalance(account.balance)} {account.currency ?? 'CAD'}
-        </Text>
-        <View style={styles.syncBadge}>
-          <View style={styles.syncDot} />
-          <Text style={styles.syncText}>{syncedLabel ? `Synced ${syncedLabel}` : 'Active'}</Text>
+        <View style={styles.institutionMeta}>
+          <Text style={[styles.institutionName, IS_WEB && { fontFamily: 'Geist' }]}>
+            {institution.institutionName}
+          </Text>
+          <Text style={styles.institutionSub}>
+            {countLabel}
+            {syncedLabel ? ` · synced ${syncedLabel}` : ''}
+          </Text>
         </View>
+        <Ionicons name="chevron-forward" size={16} color={C.faint} />
       </View>
-    </View>
+    </Swipeable>
   );
 }
 
@@ -95,6 +149,28 @@ export default function Accounts({ navigation }) {
       setRefreshing(false);
     }
   }, []);
+
+  // Roll the flat account list into one entry per institution. Recomputed
+  // whenever the underlying account list changes (sync, disconnect, refresh).
+  const institutions = useMemo(() => groupByInstitution(accounts), [accounts]);
+
+  // Disconnect every account under one institution. Backend wipes the
+  // accounts + their transactions for this user; we optimistically prune
+  // the local list while the request is in flight, then re-fetch to settle.
+  const handleDisconnect = useCallback(async (institutionName) => {
+    const before = accounts;
+    setAccounts((prev) => prev.filter((a) => (a.institutionName ?? 'Bank') !== institutionName));
+    try {
+      await api.delete(`/accounts/institution/${encodeURIComponent(institutionName)}`);
+      await fetchAccounts();
+    } catch (err) {
+      // Rollback the optimistic prune and surface the error so the user knows
+      setAccounts(before);
+      const msg = err?.response?.data?.message || err?.message || 'Could not disconnect this institution.';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Disconnect failed', msg);
+    }
+  }, [accounts, fetchAccounts]);
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
@@ -230,7 +306,7 @@ export default function Accounts({ navigation }) {
           <Text style={[styles.sectionTitle, IS_WEB && { fontFamily: 'Geist' }]}>Active Accounts</Text>
           {accounts.length > 0 && (
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>{accounts.length}</Text>
+              <Text style={styles.countText}>{institutions.length}</Text>
             </View>
           )}
         </View>
@@ -241,7 +317,7 @@ export default function Accounts({ navigation }) {
               <ActivityIndicator size="small" color={C.teal} />
               <Text style={styles.emptyText}>Loading accounts…</Text>
             </View>
-          ) : accounts.length === 0 ? (
+          ) : institutions.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIcon}>
                 <Ionicons name="wallet-outline" size={28} color={C.teal} />
@@ -250,15 +326,14 @@ export default function Accounts({ navigation }) {
               <Text style={styles.emptyText}>Connect a bank below to get started.</Text>
             </View>
           ) : (
-            accounts
-              .filter(a =>
+            institutions
+              .filter(inst =>
                 !search.trim() ||
-                (a.institutionName ?? '').toLowerCase().includes(search.toLowerCase()) ||
-                (a.accountName ?? '').toLowerCase().includes(search.toLowerCase())
+                inst.institutionName.toLowerCase().includes(search.toLowerCase())
               )
-              .map((acct, i, arr) => (
-                <View key={acct.id ?? i}>
-                  <AccountRow account={acct} />
+              .map((inst, i, arr) => (
+                <View key={inst.institutionName}>
+                  <InstitutionRow institution={inst} onDisconnect={handleDisconnect} />
                   {i < arr.length - 1 && <View style={styles.rowDivider} />}
                 </View>
               ))
@@ -383,32 +458,30 @@ const styles = StyleSheet.create({
     ...SHADOW_SOFT,
   },
 
-  // Account row
-  accountRow: {
+  // Institution row (one entry per connected bank — no balances surfaced)
+  institutionRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
+    paddingHorizontal: 16, paddingVertical: 16, gap: 14,
+    backgroundColor: C.card,
   },
   rowDivider: { height: 1, backgroundColor: C.border, marginHorizontal: 16 },
-  accountLogo: {
+  institutionLogo: {
     width: 44, height: 44, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  accountLogoText: { color: '#fff', fontSize: 12, fontWeight: '900', letterSpacing: 0.3 },
-  accountMeta: { flex: 1 },
-  accountName: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 4 },
-  accountSubRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  accountSub: { fontSize: 12, color: C.muted },
-  accountRight: { alignItems: 'flex-end', gap: 5 },
-  accountBalance: { fontSize: 14, fontWeight: '800', color: C.text },
-  syncBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: C.greenDim, borderRadius: 999,
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderWidth: 1, borderColor: C.greenBorder,
+  institutionLogoText: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.3 },
+  institutionMeta:     { flex: 1, minWidth: 0 },
+  institutionName:     { fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 3 },
+  institutionSub:      { fontSize: 12, color: C.muted },
+
+  // Swipe action — red "Disconnect" pill revealed on left-swipe
+  swipeDisconnect: {
+    backgroundColor: C.red,
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 22, gap: 4,
   },
-  syncDot:  { width: 5, height: 5, borderRadius: 3, backgroundColor: C.green },
-  syncText: { fontSize: 9, fontWeight: '700', color: C.green, letterSpacing: 0.3 },
+  swipeDisconnectText: { color: C.textInvert, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
 
   // Empty state
   emptyState: { alignItems: 'center', paddingVertical: 36, paddingHorizontal: 20 },

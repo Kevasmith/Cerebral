@@ -50,6 +50,59 @@ export class AccountsService {
   }
 
   /**
+   * Disconnect a single institution for this user. Wipes the user's accounts
+   * under that institutionName and every transaction tied to those accounts.
+   * Plaid item/remove (revoking the access token at Plaid's side) is left as
+   * a follow-up — see TODO below — so for now we trust the local cleanup.
+   *
+   * Returns the count of accounts removed so the caller can confirm.
+   */
+  async disconnectInstitution(
+    userId: string,
+    institutionName: string,
+  ): Promise<{ accountsRemoved: number }> {
+    // Find every account this user owns under the institution. The match is
+    // case-insensitive because Plaid / Flinks sometimes return slightly
+    // different casing across syncs (e.g. "Chase" vs "CHASE BANK").
+    const accounts = await this.accountRepo
+      .createQueryBuilder('a')
+      .where('a.userId = :userId', { userId })
+      .andWhere('LOWER(a.institutionName) = LOWER(:institutionName)', { institutionName })
+      .getMany();
+
+    if (accounts.length === 0) {
+      return { accountsRemoved: 0 };
+    }
+
+    const accountIds = accounts.map((a) => a.id);
+
+    // Wipe transactions first (FK from transactions.accountId → accounts.id)
+    // then the accounts themselves, all in one transaction so we don't end
+    // up with orphans on a partial failure.
+    await this.accountRepo.manager.transaction(async (em) => {
+      await em.getRepository(Transaction)
+        .createQueryBuilder()
+        .delete()
+        .where('"accountId" IN (:...ids)', { ids: accountIds })
+        .execute();
+      await em.getRepository(Account)
+        .createQueryBuilder()
+        .delete()
+        .where('id IN (:...ids)', { ids: accountIds })
+        .execute();
+    });
+
+    this.logger.log(
+      `User ${userId} disconnected ${institutionName} (${accounts.length} account(s) removed)`,
+    );
+
+    // TODO: when Plaid is fully wired, also call plaid.itemRemove(access_token)
+    // for each unique plaidItemId in `accounts` so the token is revoked upstream.
+
+    return { accountsRemoved: accounts.length };
+  }
+
+  /**
    * Plaid sync: exchange public_token for access_token, persist accounts +
    * transactions. Mirrors syncFromLoginId on the Flinks side; the two paths
    * unify in step 5 via the BankProviderRouter (current code already routes
