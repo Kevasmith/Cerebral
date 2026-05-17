@@ -55,6 +55,11 @@ export class Account {
   @Column({ transformer: encryptedTransformer })
   accountName: string;
 
+  // Optional user-defined label, e.g. "Joint chequing" or "Travel card".
+  // Encrypted at rest to match the rest of the account-identity columns.
+  @Column({ type: 'varchar', nullable: true, transformer: encryptedTransformer })
+  nickname: string | null;
+
   @Column({ type: 'enum', enum: AccountType })
   accountType: AccountType;
 
