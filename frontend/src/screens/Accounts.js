@@ -1,9 +1,8 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Platform, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
@@ -38,11 +37,9 @@ function groupByInstitution(accounts) {
 
 // ─── Connected institution row ────────────────────────────────────────────────
 // Minimal: logo, institution name, sync state, trailing unlink icon. No
-// balances surfaced. Two ways to disconnect:
-//   - Swipe the row left → reveals a red "Disconnect" panel
-//   - Tap the trailing unlink icon → same confirm + remove
-// The icon is kept as a discoverable affordance because some users won't
-// think to swipe; both paths route through the same confirmDisconnect.
+// balances surfaced. Tap the trailing icon → confirm → disconnect. Swipe was
+// rolled back; bringing it back requires installing react-native-gesture-handler
+// and a fresh EAS dev build (a real native module add).
 function InstitutionRow({ institution, onDisconnect }) {
   const initials = bankInitial(institution.institutionName);
   const color = bankColor(institution.institutionName);
@@ -50,73 +47,47 @@ function InstitutionRow({ institution, onDisconnect }) {
   const countLabel =
     institution.count === 1 ? '1 account connected' : `${institution.count} accounts connected`;
 
-  const swipeRef = useRef(null);
-
   const confirmDisconnect = () => {
-    const close = () => swipeRef.current?.close?.();
-    const proceed = () => {
-      close();
-      onDisconnect?.(institution.institutionName);
-    };
+    const proceed = () => onDisconnect?.(institution.institutionName);
     if (Platform.OS === 'web') {
       if (window.confirm(
         `Disconnect ${institution.institutionName}?\n\nCerebral will stop syncing these accounts and remove their data.`
       )) proceed();
-      else close();
     } else {
       Alert.alert(
         `Disconnect ${institution.institutionName}?`,
         'Cerebral will stop syncing these accounts and remove their data.',
         [
-          { text: 'Cancel',     style: 'cancel', onPress: close },
+          { text: 'Cancel',     style: 'cancel' },
           { text: 'Disconnect', style: 'destructive', onPress: proceed },
         ],
       );
     }
   };
 
-  const renderRightActions = () => (
-    <TouchableOpacity
-      style={styles.swipeDisconnect}
-      activeOpacity={0.85}
-      onPress={confirmDisconnect}
-    >
-      <Ionicons name="unlink-outline" size={20} color={C.textInvert} />
-      <Text style={styles.swipeDisconnectText}>Disconnect</Text>
-    </TouchableOpacity>
-  );
-
   return (
-    <Swipeable
-      ref={swipeRef}
-      renderRightActions={renderRightActions}
-      overshootRight={false}
-      friction={2}
-      rightThreshold={40}
-    >
-      <View style={styles.institutionRow}>
-        <View style={[styles.institutionLogo, { backgroundColor: color }]}>
-          <Text style={styles.institutionLogoText}>{initials}</Text>
-        </View>
-        <View style={styles.institutionMeta}>
-          <Text style={[styles.institutionName, IS_WEB && { fontFamily: 'Geist' }]}>
-            {institution.institutionName}
-          </Text>
-          <Text style={styles.institutionSub}>
-            {countLabel}
-            {syncedLabel ? ` · synced ${syncedLabel}` : ''}
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={confirmDisconnect}
-          style={styles.disconnectBtn}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="unlink-outline" size={18} color={C.red} />
-        </TouchableOpacity>
+    <View style={styles.institutionRow}>
+      <View style={[styles.institutionLogo, { backgroundColor: color }]}>
+        <Text style={styles.institutionLogoText}>{initials}</Text>
       </View>
-    </Swipeable>
+      <View style={styles.institutionMeta}>
+        <Text style={[styles.institutionName, IS_WEB && { fontFamily: 'Geist' }]}>
+          {institution.institutionName}
+        </Text>
+        <Text style={styles.institutionSub}>
+          {countLabel}
+          {syncedLabel ? ` · synced ${syncedLabel}` : ''}
+        </Text>
+      </View>
+      <TouchableOpacity
+        onPress={confirmDisconnect}
+        style={styles.disconnectBtn}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="unlink-outline" size={18} color={C.red} />
+      </TouchableOpacity>
+    </View>
   );
 }
 

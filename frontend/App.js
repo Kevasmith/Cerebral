@@ -4,7 +4,6 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 
 import { api } from './src/api/client';
@@ -169,9 +168,6 @@ export default function App() {
   }
 
   return (
-    // GestureHandlerRootView must wrap the app so react-native-gesture-handler
-    // can intercept touches (Swipeable on the Accounts screen needs this).
-    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" translucent={false} />
       <NavigationContainer ref={navRef} linking={linking}>
@@ -199,6 +195,5 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
-    </GestureHandlerRootView>
   );
 }
