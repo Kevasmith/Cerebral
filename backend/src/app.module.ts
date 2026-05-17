@@ -52,6 +52,10 @@ import { rlsContext } from './common/rls/rls-context';
         const db = config.get('database') as any;
         const entities = [User, Account, Transaction, Insight, Preference, WaitlistEntry, Subscription];
 
+        // TYPEORM_SYNCHRONIZE defaults to true to preserve dev ergonomics —
+        // set TYPEORM_SYNCHRONIZE=false on a prod environment to switch to
+        // explicit migrations. When synchronize is off, migrationsRun: true
+        // auto-applies any pending migration on boot.
         const syncEnv = process.env.TYPEORM_SYNCHRONIZE;
         const synchronize = syncEnv === 'false' ? false : true;
 
@@ -59,6 +63,11 @@ import { rlsContext } from './common/rls/rls-context';
           type: 'postgres',
           entities,
           synchronize,
+          // Same migrations dir + table that src/data-source.ts (the CLI
+          // data source) uses, so the CLI and the runtime stay aligned.
+          migrations: ['dist/migrations/*.js'],
+          migrationsTableName: 'typeorm_migrations',
+          migrationsRun: !synchronize,
           logging: process.env.NODE_ENV === 'development',
           extra: {
             connectionTimeoutMillis: 5000,  // fail fast if pool is exhausted
