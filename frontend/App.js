@@ -1,5 +1,7 @@
+import 'react-native-gesture-handler';
 import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, View, Platform, StatusBar } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -168,10 +170,13 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#0F172A" translucent={false} />
-      <NavigationContainer ref={navRef} linking={linking}>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+    // GestureHandlerRootView must wrap the app so react-native-gesture-handler
+    // can intercept touches — needed by Swipeable on the Accounts screen.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" backgroundColor="#0F172A" translucent={false} />
+        <NavigationContainer ref={navRef} linking={linking}>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!user ? (
             <>
               <Stack.Screen name="Welcome" component={Welcome} />
@@ -192,8 +197,9 @@ export default function App() {
               <Stack.Screen name="Savings" component={Savings} options={{ animation: 'fade' }} />
             </>
           )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
